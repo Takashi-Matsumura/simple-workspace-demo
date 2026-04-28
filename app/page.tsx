@@ -1,8 +1,9 @@
 "use client";
 
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
-import { ZoomIn, ZoomOut, Layers, Folder } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { Loader2, ZoomIn, ZoomOut, Layers, Folder } from "lucide-react";
 import type { View, CanvasActions } from "./demo/components/whiteboard-canvas";
 import type { Workspace } from "./demo/components/floating-workspace";
 import { AccountBadge } from "./demo/components/account-badge";
@@ -24,11 +25,35 @@ const FloatingWorkspace = dynamic(
 );
 
 export default function Home() {
+  const router = useRouter();
   const canvasRef = useRef<CanvasActions | null>(null);
   const [view, setView] = useState<View>({ x: 0, y: 0, zoom: 1 });
   const [workspace, setWorkspace] = useState<Workspace | null>(null);
   const [drawOver, setDrawOver] = useState(false);
+  // proxy.ts は Cookie の存在しか見ないため、無効 Cookie でも / が描画される。
+  // クライアント側で /api/auth/me を呼んで user が null なら /login へ送る。
+  const [authState, setAuthState] = useState<"loading" | "authed">("loading");
   const panels = usePanels();
+
+  useEffect(() => {
+    let cancelled = false;
+    fetch("/api/auth/me")
+      .then((r) => r.json())
+      .then((data) => {
+        if (cancelled) return;
+        if (data?.user) {
+          setAuthState("authed");
+        } else {
+          router.replace("/login");
+        }
+      })
+      .catch(() => {
+        if (!cancelled) router.replace("/login");
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [router]);
 
   // ワークスペース切替時はパネル内のセッションも一緒にクリアする。
   const handleWorkspaceChange = useCallback(
@@ -45,6 +70,14 @@ export default function Home() {
     if (!workspace) return;
     panels.openTerminal(id, workspace);
   };
+
+  if (authState === "loading") {
+    return (
+      <main className="fixed inset-0 flex items-center justify-center bg-neutral-50">
+        <Loader2 className="h-5 w-5 animate-spin text-neutral-500" />
+      </main>
+    );
+  }
 
   return (
     <main className="fixed inset-0 overflow-hidden">
