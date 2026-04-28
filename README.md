@@ -1,36 +1,127 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# simple-workspace-demo
 
-## Getting Started
+社内文書の **RAG 検索** と **Agentic サーチ** の動作確認用デモアプリ。
+ホワイトボード（Excalidraw）の上にフロート型の Workspace パネルと OpenCode パネルを配置する構成で、Cookie 認証 / Workspace CRUD / ホワイトボードの自動保存までをコンパクトに実装してあります。
 
-First, run the development server:
+ベースは [`myworkspaces`](https://github.com/Takashi-Matsumura/myworkspaces.git) から **ログイン / Workspace / ホワイトボード / パネル拡張機構** の 4 つだけを移植し、Docker / PostgreSQL / xterm + PTY / 多数のパネル群は削ぎ落とした最小構成です。OpenCode パネルは現状プレースホルダで、次フェーズで RAG / Agentic 検索 UI を載せる予定です。
+
+## 技術スタック
+
+- **Next.js 16.2.4** (App Router, Turbopack)
+- **React 19.2.4**
+- **Tailwind CSS 4**
+- **Prisma 7** + **SQLite** (driver adapter: `@prisma/adapter-better-sqlite3`)
+- **Excalidraw 0.18** (ホワイトボード)
+- Cookie 認証 (`bcryptjs` + HMAC 署名 Cookie)
+- TypeScript strict
+
+## 起動手順
 
 ```bash
+# 1. 依存をインストール
+npm install
+
+# 2. 環境変数ファイルを用意
+cp .env.example .env
+
+# 3. SQLite DB を初期化
+npx prisma migrate dev
+
+# 4. 開発サーバを起動
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+[http://localhost:3000](http://localhost:3000) を開くと `/login` にリダイレクトされます。`/register` から新規ユーザーを作成し、ログイン後に Workspace を作って OpenCode パネルを開けます。
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### 主な npm スクリプト
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| コマンド | 用途 |
+| --- | --- |
+| `npm run dev` | 開発サーバ |
+| `npm run build` | プロダクションビルド |
+| `npm run lint` | ESLint |
+| `npm run db:migrate` | Prisma マイグレーション (開発用) |
+| `npm run db:studio` | Prisma Studio |
 
-## Learn More
+## 環境変数
 
-To learn more about Next.js, take a look at the following resources:
+`.env.example` を `.env` にコピーして使います。
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| キー | 用途 |
+| --- | --- |
+| `DATABASE_URL` | SQLite ファイルパス (例: `file:./prisma/dev.db`) |
+| `SESSION_SECRET` | Cookie 署名用シークレット (16 文字以上) |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## ディレクトリ構成
 
-## Deploy on Vercel
+```
+app/
+├── api/
+│   ├── auth/{register,login,logout,me}/   # Cookie 認証
+│   ├── user/workspaces/                    # Workspace CRUD
+│   └── whiteboard/                         # Excalidraw 自動保存 (1.5s デバウンス)
+├── login/                                  # ログイン画面
+├── register/                               # 新規登録画面
+├── page.tsx                                # メイン画面 (Whiteboard + フロートパネル群)
+├── layout.tsx
+└── demo/
+    ├── components/
+    │   ├── whiteboard-canvas.tsx           # Excalidraw 統合
+    │   ├── floating-workspace*.tsx         # Workspace パネル
+    │   ├── floating-terminal.tsx           # OpenCode 用フロート枠
+    │   ├── opencode-placeholder.tsx        # OpenCode 中身 (次フェーズで差し替え)
+    │   ├── account-badge.tsx               # ヘッダー右のユーザー + ログアウト
+    │   └── workspace-context.tsx
+    ├── hooks/                              # use-panels, use-pointer-drag/resize 等
+    ├── config/terminal-panels.tsx          # パネル拡張カタログ
+    ├── lib/storage-keys.ts
+    ├── api/workspace.ts                    # クライアント側 fetch ラッパー
+    └── types/panels.ts
+lib/
+├── auth.ts                                 # Cookie 発行・検証 / bcrypt
+├── user.ts                                 # getUser / requireUser (OIDC 移行点)
+├── prisma.ts                               # Prisma + better-sqlite3 adapter
+├── user-store.ts                           # Workspace CRUD
+└── api-schemas.ts                          # zod schema (workspace 関連)
+prisma/
+├── schema.prisma                           # User / Session / Workspace / Whiteboard
+└── migrations/
+proxy.ts                                    # Next.js 16 の proxy (Cookie 存在で /login ガード)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## 認証フロー
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- `proxy.ts` は Cookie の **存在** だけを判定し、未ログインなら `/login` にリダイレクト (Edge runtime)
+- 実際のセッション検証は API ルート (`getUser`) と `app/page.tsx` のクライアントガードで行う
+- Cookie は `<token>.<HMAC-SHA256(token)>` 形式 (HttpOnly + SameSite=Lax)
+- 30 日 TTL、`POST /api/auth/logout` で DB セッションと Cookie の両方を破棄
+
+OIDC など外部認証へ移行する場合は `lib/user.ts` の `getUser` を差し替えるだけで済む構造になっています。
+
+## OpenCode パネルの拡張
+
+新しいパネル種別を増やすときは `app/demo/config/terminal-panels.tsx` の `TERMINAL_PANEL_DEFINITIONS` に 1 行追加するだけで、`<FloatingTerminal>` と footer の `<PanelSwitcherButton>` の両方が自動的に生えます。
+
+```tsx
+// app/demo/config/terminal-panels.tsx
+{
+  id: "opencode",
+  variant: "opencode",
+  slot: "center",
+  switcherLabel: "OpenCode",
+  switcherTitle: "OpenCode パネルを最前面に",
+  switcherAccent: "#7c3aed",
+  switcherIcon: <Sparkles className="h-3 w-3" />,
+}
+```
+
+中身は `app/demo/components/opencode-placeholder.tsx` を差し替えれば良い設計です。
+
+## 次フェーズ
+
+- OpenCode パネルに [`agentic-search-demo`](https://github.com/Takashi-Matsumura) ベースの RAG / Agentic 検索 UI を実装
+- 社内文書のサンプル ingest と「同じ質問を RAG / Agentic に投げて結果比較」できる UI
+
+## ライセンス
+
+[MIT](./LICENSE)
