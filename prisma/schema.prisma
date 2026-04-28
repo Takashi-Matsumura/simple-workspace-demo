@@ -1,0 +1,55 @@
+// simple-workspace-demo: User / Session / Workspace / Whiteboard の最小構成
+//
+// myworkspaces から RagDocument / ShareLink / Rope / A2AMessage を削除し、
+// User.networkIsolated も省略。SQLite には Json 型がないため
+// Whiteboard.elements / appState は String にし、API ルートで JSON.stringify/parse する。
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model User {
+  id           String      @id @default(cuid())
+  username     String      @unique
+  passwordHash String
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  workspaces   Workspace[]
+  sessions     Session[]
+  whiteboard   Whiteboard?
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  createdAt DateTime @default(now())
+  expiresAt DateTime
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([expiresAt])
+}
+
+model Workspace {
+  id           String   @id
+  userId       String
+  label        String
+  createdAt    DateTime @default(now())
+  lastOpenedAt DateTime @default(now())
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model Whiteboard {
+  userId    String   @id
+  elements  String
+  appState  String
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
