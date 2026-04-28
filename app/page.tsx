@@ -81,11 +81,18 @@ export default function Home() {
 
   return (
     <main className="fixed inset-0 overflow-hidden">
+      <header className="fixed top-0 right-0 left-0 z-[60] flex h-9 items-center justify-between border-b border-slate-200 bg-white/90 px-3 backdrop-blur-sm">
+        <span className="font-mono text-xs font-medium text-slate-700">
+          simple-workspace-demo
+        </span>
+        <AccountBadge />
+      </header>
       <WhiteboardCanvas
         onView={setView}
         zoomRef={canvasRef}
         drawOverMode={drawOver}
         showToolbar={drawOver}
+        topOffset={36}
       />
       <FloatingWorkspace
         view={view}
@@ -115,7 +122,6 @@ export default function Home() {
       })}
       <footer className="fixed right-0 bottom-0 left-0 z-[60] flex h-8 items-center justify-center gap-1 border-t border-slate-200 bg-white/90 backdrop-blur-sm">
         <div className="absolute inset-y-0 left-2 flex items-center gap-2">
-          <AccountBadge />
           <PanelSwitcherButton
             active={panels.frontPanel === "workspace"}
             onClick={() => panels.bringToFront("workspace")}

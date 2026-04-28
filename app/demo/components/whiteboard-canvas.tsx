@@ -34,11 +34,15 @@ export default function WhiteboardCanvas({
   zoomRef,
   drawOverMode = false,
   showToolbar = false,
+  topOffset = 0,
 }: {
   onView?: (v: View) => void;
   zoomRef?: MutableRefObject<CanvasActions | null>;
   drawOverMode?: boolean;
   showToolbar?: boolean;
+  // ヘッダーなど画面上部の固定要素分だけ Excalidraw キャンバスを下にずらす。
+  // Draw Over 時のツールバーがヘッダーに重なる問題を回避する。
+  topOffset?: number;
 }) {
   const [api, setApi] = useState<ExcalidrawApi | null>(null);
   const [loaded, setLoaded] = useState<LoadedData>(null);
@@ -189,7 +193,14 @@ export default function WhiteboardCanvas({
 
   return (
     <div
-      style={{ position: "absolute", inset: 0, zIndex: drawOverMode ? 55 : undefined }}
+      style={{
+        position: "absolute",
+        top: topOffset,
+        left: 0,
+        right: 0,
+        bottom: 0,
+        zIndex: drawOverMode ? 55 : undefined,
+      }}
       onPointerDown={() => {
         const active = document.activeElement;
         if (active instanceof HTMLElement) active.blur();
