@@ -21,9 +21,9 @@ export async function POST(request: NextRequest) {
       { status: 400 },
     );
   }
-  if (password.length < 8 || password.length > 128) {
+  if (password.length < 4 || password.length > 12) {
     return NextResponse.json(
-      { error: "パスワードは 8〜128 文字で指定してください" },
+      { error: "パスワードは 4〜12 文字で指定してください" },
       { status: 400 },
     );
   }
