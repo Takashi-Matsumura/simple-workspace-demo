@@ -15,7 +15,7 @@ import { usePointerResize } from "../hooks/use-pointer-resize";
 import { useFontSize } from "../hooks/use-font-size";
 import { terminalFontSizeKey } from "../lib/storage-keys";
 
-const OpenCodePlaceholder = dynamic(() => import("./opencode-placeholder"), {
+const OpenCodeChat = dynamic(() => import("./opencode-chat"), {
   ssr: false,
 });
 
@@ -176,7 +176,7 @@ export default function FloatingTerminal({
         {!minimized && (
           <div className="relative flex-1 overflow-hidden rounded-b-lg bg-[#0b0b0f]">
             {session ? (
-              <OpenCodePlaceholder workspaceId={session.workspaceId} fontSize={fontSize} />
+              <OpenCodeChat workspaceId={session.workspaceId} fontSize={fontSize} />
             ) : (
               <div className="flex h-full w-full items-center justify-center px-6 text-center font-mono text-xs text-white/50">
                 Workspace パネルからワークスペースを選択して起動してください
