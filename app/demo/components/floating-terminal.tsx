@@ -85,16 +85,22 @@ export default function FloatingTerminal({
   const left = (scenePos.x + view.x) * view.zoom;
   const top = (scenePos.y + view.y) * view.zoom;
 
-  // variant でフレーム枠の色とヘッダ副題を出し分ける（ヘッダ背景は共通）。
-  const frameBorder =
-    variant === "report" ? "border-teal-400" : "border-blue-400";
-  const frontSublabel =
-    variant === "report" ? "訪問介護レポート" : "RAG vs Agentic";
+  // variant ごとのテーマカラー: フレーム枠 / ヘッダ背景 / ヘッダ下ボーダー /
+  // ロゴ文字色 / リサイズハンドル / 副題文言。
+  const isReport = variant === "report";
+  const frameBorder = isReport ? "border-teal-400" : "border-blue-400";
+  const headerBg = isReport ? "bg-teal-100" : "bg-blue-100";
+  const headerBorder = isReport ? "border-teal-300" : "border-blue-300";
+  const logoColor = isReport ? "text-teal-700" : "text-blue-700";
+  const resizeColor = isReport
+    ? "rgba(13,148,136,0.55)"
+    : "rgba(59,130,246,0.55)";
+  const frontSublabel = isReport ? "訪問介護レポート" : "RAG vs Agentic";
 
   // ヘッダーは表/裏共通。ライトテーマ + opencode ロゴ。
   const headerBar = (sublabel: string) => (
     <div
-      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-blue-300 bg-blue-100 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
+      className={`flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b ${headerBorder} ${headerBg} px-3 text-xs text-slate-600 active:cursor-grabbing select-none`}
       {...headerHandlers}
     >
       <div className="flex items-center gap-1.5">
@@ -125,7 +131,7 @@ export default function FloatingTerminal({
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
       </div>
-      <OpenCodeLogo className="ml-1 text-blue-700" />
+      <OpenCodeLogo className={`ml-1 ${logoColor}`} />
       <span className="font-mono text-[10px] text-slate-400">— {sublabel}</span>
       <div className="ml-auto flex items-center gap-1">
         <button
@@ -162,7 +168,7 @@ export default function FloatingTerminal({
       className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
       {...resizeHandlers}
       style={{
-        background: "linear-gradient(135deg, transparent 50%, rgba(59,130,246,0.55) 50%)",
+        background: `linear-gradient(135deg, transparent 50%, ${resizeColor} 50%)`,
       }}
     />
   );
