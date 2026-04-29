@@ -11,6 +11,7 @@ import type { Workspace } from "../components/floating-workspace";
 
 export type PanelsState = {
   sessions: Map<TerminalPanelId, TerminalSession>;
+  shellOpen: boolean;
   order: PanelId[]; // 末尾 = 最前面
 };
 
@@ -22,11 +23,14 @@ export type PanelsAction =
       nonce: number;
     }
   | { type: "close_terminal"; id: TerminalPanelId }
+  | { type: "open_shell" }
+  | { type: "close_shell" }
   | { type: "bring_to_front"; id: PanelId }
   | { type: "clear_terminal_sessions" };
 
 const INITIAL_STATE: PanelsState = {
   sessions: new Map(),
+  shellOpen: false,
   order: [...INITIAL_PANEL_ORDER],
 };
 
@@ -43,13 +47,28 @@ export function panelsReducer(state: PanelsState, action: PanelsAction): PanelsS
         workspaceId: action.workspace.id,
         nonce: action.nonce,
       });
-      return { sessions, order: moveToFront(state.order, action.id) };
+      return {
+        ...state,
+        sessions,
+        order: moveToFront(state.order, action.id),
+      };
     }
     case "close_terminal": {
       if (!state.sessions.has(action.id)) return state;
       const sessions = new Map(state.sessions);
       sessions.delete(action.id);
       return { ...state, sessions };
+    }
+    case "open_shell": {
+      return {
+        ...state,
+        shellOpen: true,
+        order: moveToFront(state.order, "shell"),
+      };
+    }
+    case "close_shell": {
+      if (!state.shellOpen) return state;
+      return { ...state, shellOpen: false };
     }
     case "bring_to_front": {
       const next = moveToFront(state.order, action.id);
@@ -69,11 +88,14 @@ export function panelsReducer(state: PanelsState, action: PanelsAction): PanelsS
 
 export function usePanels(): {
   sessions: ReadonlyMap<TerminalPanelId, TerminalSession>;
+  shellOpen: boolean;
   order: readonly PanelId[];
   frontPanel: PanelId;
   zFor: (id: PanelId) => number;
   openTerminal: (id: TerminalPanelId, workspace: Workspace) => void;
   closeTerminal: (id: TerminalPanelId) => void;
+  openShell: () => void;
+  closeShell: () => void;
   bringToFront: (id: PanelId) => void;
   clearTerminalSessions: () => void;
 } {
@@ -85,6 +107,14 @@ export function usePanels(): {
 
   const closeTerminal = useCallback((id: TerminalPanelId) => {
     dispatch({ type: "close_terminal", id });
+  }, []);
+
+  const openShell = useCallback(() => {
+    dispatch({ type: "open_shell" });
+  }, []);
+
+  const closeShell = useCallback(() => {
+    dispatch({ type: "close_shell" });
   }, []);
 
   const bringToFront = useCallback((id: PanelId) => {
@@ -105,11 +135,14 @@ export function usePanels(): {
 
   return {
     sessions: state.sessions,
+    shellOpen: state.shellOpen,
     order: state.order,
     frontPanel,
     zFor,
     openTerminal,
     closeTerminal,
+    openShell,
+    closeShell,
     bringToFront,
     clearTerminalSessions,
   };
