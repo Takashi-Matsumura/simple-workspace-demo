@@ -1,15 +1,33 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ClipboardList, FileCheck2, Send, Trash2 } from "lucide-react";
+import { ClipboardList, FileCheck2, Send, ShieldAlert, Trash2 } from "lucide-react";
 import { MarkdownText, OPEN_PATH_EVENT } from "./markdown-text";
+import type { GuidelineHit } from "../types/opencode";
 
 type Props = {
   workspaceId: string;
   fontSize: number;
 };
 
-type Status = "idle" | "streaming" | "done" | "error";
+type Status = "idle" | "streaming" | "checking" | "done" | "error";
+
+type GuidelineToolEvent =
+  | {
+      kind: "search";
+      toolCallId: string;
+      query?: string;
+      hits?: GuidelineHit[];
+      state: "running" | "done" | "error";
+    }
+  | {
+      kind: "read";
+      toolCallId: string;
+      id?: string;
+      title?: string;
+      found?: boolean;
+      state: "running" | "done" | "error";
+    };
 
 const PRESETS: {
   label: string;
@@ -55,6 +73,41 @@ function todayISO(): string {
   return new Date().toISOString().slice(0, 10);
 }
 
+// SSE (data: <json>\n\n) を 1 件ずつ JSON にパースする最小実装。
+// AI SDK の toUIMessageStreamResponse は 1 行 1 イベントの SSE を返すので、
+// `data: ` プレフィックスを剥がして JSON.parse するだけで UIMessageChunk になる。
+async function* parseUIMessageStream(
+  body: ReadableStream<Uint8Array>,
+): AsyncGenerator<Record<string, unknown>> {
+  const reader = body.getReader();
+  const decoder = new TextDecoder();
+  let buf = "";
+  while (true) {
+    const { done, value } = await reader.read();
+    if (done) {
+      buf += decoder.decode();
+    } else if (value) {
+      buf += decoder.decode(value, { stream: true });
+    }
+    let idx: number;
+    while ((idx = buf.indexOf("\n\n")) !== -1) {
+      const chunk = buf.slice(0, idx);
+      buf = buf.slice(idx + 2);
+      for (const line of chunk.split("\n")) {
+        if (!line.startsWith("data: ")) continue;
+        const data = line.slice(6);
+        if (data === "[DONE]") return;
+        try {
+          yield JSON.parse(data) as Record<string, unknown>;
+        } catch {
+          // 不完全な JSON は無視
+        }
+      }
+    }
+    if (done) return;
+  }
+}
+
 export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const [visitDate, setVisitDate] = useState<string>(todayISO);
   const [helperName, setHelperName] = useState("");
@@ -64,14 +117,20 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const [previewText, setPreviewText] = useState("");
   const [status, setStatus] = useState<Status>("idle");
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [warningMsg, setWarningMsg] = useState<string | null>(null);
   const [savedPath, setSavedPath] = useState<string | null>(null);
+  const [toolEvents, setToolEvents] = useState<GuidelineToolEvent[]>([]);
+  const [stepIndex, setStepIndex] = useState(0);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // 生成完了後に textarea にフォーカスを戻して、続けて別メモを作りやすくする。
   const prevStatus = useRef<Status>("idle");
   useEffect(() => {
-    if (prevStatus.current === "streaming" && status !== "streaming") {
+    const wasBusy =
+      prevStatus.current === "streaming" || prevStatus.current === "checking";
+    const nowBusy = status === "streaming" || status === "checking";
+    if (wasBusy && !nowBusy) {
       textareaRef.current?.focus();
     }
     prevStatus.current = status;
@@ -84,7 +143,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   };
 
   const reset = () => {
-    if (status === "streaming") return;
+    if (status === "streaming" || status === "checking") return;
     setHelperName("");
     setGuestName("");
     setFreeText("");
@@ -92,17 +151,122 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setPreviewText("");
     setStatus("idle");
     setErrorMsg(null);
+    setWarningMsg(null);
     setSavedPath(null);
+    setToolEvents([]);
+    setStepIndex(0);
+  };
+
+  // Step 2: ガイドライン照合。Step 1 で保存された path を上書き保存する。
+  // SSE chunk を直接読み、text-delta を previewText に反映 + tool-call 系を toolEvents に積む。
+  const runGuidelineCheck = async (path: string) => {
+    setStatus("checking");
+    setPreviewText("");
+    setToolEvents([]);
+    setStepIndex(0);
+
+    try {
+      const res = await fetch("/api/report/guideline-check", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ workspaceId, path }),
+      });
+      if (!res.ok || !res.body) {
+        const errText = await res.text().catch(() => `${res.status}`);
+        throw new Error(errText || `HTTP ${res.status}`);
+      }
+
+      let acc = "";
+      for await (const chunk of parseUIMessageStream(res.body)) {
+        const t = chunk.type as string;
+        if (t === "text-delta") {
+          acc += String(chunk.delta ?? "");
+          setPreviewText(acc);
+        } else if (t === "start-step") {
+          setStepIndex((n) => n + 1);
+        } else if (t === "tool-input-start") {
+          const toolCallId = String(chunk.toolCallId);
+          const toolName = String(chunk.toolName);
+          setToolEvents((prev) => [
+            ...prev,
+            toolName === "searchGuidelines"
+              ? { kind: "search", toolCallId, state: "running" }
+              : { kind: "read", toolCallId, state: "running" },
+          ]);
+        } else if (t === "tool-input-available") {
+          const toolCallId = String(chunk.toolCallId);
+          const input = chunk.input as { query?: string; id?: string } | undefined;
+          setToolEvents((prev) =>
+            prev.map((e) =>
+              e.toolCallId === toolCallId
+                ? e.kind === "search"
+                  ? { ...e, query: input?.query }
+                  : { ...e, id: input?.id }
+                : e,
+            ),
+          );
+        } else if (t === "tool-output-available") {
+          const toolCallId = String(chunk.toolCallId);
+          const output = chunk.output as
+            | { query?: string; hits?: GuidelineHit[]; id?: string; found?: boolean; title?: string }
+            | undefined;
+          setToolEvents((prev) =>
+            prev.map((e) => {
+              if (e.toolCallId !== toolCallId) return e;
+              if (e.kind === "search") {
+                return {
+                  ...e,
+                  query: output?.query ?? e.query,
+                  hits: output?.hits ?? [],
+                  state: "done",
+                };
+              }
+              return {
+                ...e,
+                id: output?.id ?? e.id,
+                found: output?.found,
+                title: output?.title,
+                state: "done",
+              };
+            }),
+          );
+        } else if (t === "tool-output-error" || t === "tool-input-error") {
+          const toolCallId = String(chunk.toolCallId);
+          setToolEvents((prev) =>
+            prev.map((e) =>
+              e.toolCallId === toolCallId ? { ...e, state: "error" } : e,
+            ),
+          );
+        } else if (t === "error") {
+          throw new Error(String(chunk.errorText ?? "stream error"));
+        }
+      }
+
+      setStatus("done");
+      // Step 2 で同 path を上書き保存しているので、tree+preview をリフレッシュ。
+      window.dispatchEvent(
+        new CustomEvent(OPEN_PATH_EVENT, { detail: { path } }),
+      );
+    } catch (e) {
+      // Step 1 のファイルは既に保存済みなので致命にしない。
+      setStatus("done");
+      setWarningMsg(
+        `ガイドライン照合に失敗しました (${(e as Error).message})。整形済みレポートは保存済みです。`,
+      );
+    }
   };
 
   const submit = async () => {
-    if (status === "streaming") return;
+    if (status === "streaming" || status === "checking") return;
     if (!freeText.trim()) return;
 
     setPreviewText("");
     setStatus("streaming");
     setErrorMsg(null);
+    setWarningMsg(null);
     setSavedPath(null);
+    setToolEvents([]);
+    setStepIndex(0);
 
     try {
       const res = await fetch("/api/report/generate", {
@@ -139,7 +303,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         }
       }
 
-      setStatus("done");
       if (path) {
         setSavedPath(path);
         // ストリーム終端時には onFinish 側の writeWorkspaceFile が確定済み。
@@ -147,6 +310,11 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         window.dispatchEvent(
           new CustomEvent(OPEN_PATH_EVENT, { detail: { path } }),
         );
+        // Step 1 の onFinish (writeWorkspaceFile) が確実に終わるよう少し待ってから Step 2 を発火。
+        await new Promise((r) => setTimeout(r, 50));
+        await runGuidelineCheck(path);
+      } else {
+        setStatus("done");
       }
     } catch (e) {
       setStatus("error");
@@ -154,7 +322,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     }
   };
 
-  const busy = status === "streaming";
+  const busy = status === "streaming" || status === "checking";
   const canSubmit = !busy && freeText.trim().length > 0;
   const hasResult = previewText.length > 0 || savedPath !== null;
 
@@ -253,7 +421,11 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             className="inline-flex items-center justify-center gap-1 rounded bg-teal-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-teal-500 disabled:opacity-40"
           >
             <Send className="h-3 w-3" />
-            {busy ? "整形中..." : "整形してファイル保存"}
+            {status === "streaming"
+              ? "整形中..."
+              : status === "checking"
+                ? "ガイドライン照合中..."
+                : "整形してファイル保存"}
           </button>
 
           {errorMsg && (
@@ -265,32 +437,111 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
               </div>
             </div>
           )}
+          {warningMsg && (
+            <div className="rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800">
+              <div className="mb-1 font-medium">警告</div>
+              <div className="whitespace-pre-wrap">{warningMsg}</div>
+            </div>
+          )}
         </div>
 
         {/* 右: 整形プレビュー */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
-            整形プレビュー
+            {status === "checking"
+              ? `ガイドライン照合中 (step ${stepIndex}/8)`
+              : "整形プレビュー"}
             {busy && (
               <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
-                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
-                running
+                <span
+                  className={`h-1.5 w-1.5 animate-pulse rounded-full ${
+                    status === "checking" ? "bg-amber-500" : "bg-teal-500"
+                  }`}
+                />
+                {status === "checking" ? "checking" : "running"}
               </span>
             )}
           </div>
+
+          {/* tool-call ストリップ (Step 2 のみ) */}
+          {(toolEvents.length > 0 || status === "checking") && (
+            <div className="flex shrink-0 flex-col gap-1 border-b border-amber-200 bg-amber-50/40 px-3 py-1.5">
+              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+                <ShieldAlert className="h-3 w-3" />
+                Agentic ガイドライン検索
+              </div>
+              {toolEvents.length === 0 && status === "checking" && (
+                <div className="text-[10px] italic text-amber-700/70">
+                  検索待機中...
+                </div>
+              )}
+              {toolEvents.map((ev) => (
+                <ToolEventRow key={ev.toolCallId} ev={ev} />
+              ))}
+            </div>
+          )}
+
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
             {!hasResult && !busy && (
               <p className="italic text-slate-400">
                 左のメモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
                 Markdown レポートがここに流れ、{" "}
                 <span className="font-mono">reports/</span> フォルダに保存されます。
+                整形完了後、自動でガイドライン照合が走り、人間の確認が必要な箇所が
+                太字 + サマリで追記されます。
               </p>
             )}
             {previewText.length > 0 && <MarkdownText text={previewText} />}
           </div>
         </div>
       </div>
+    </div>
+  );
+}
+
+function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
+  const stateBadge =
+    ev.state === "running" ? (
+      <span className="ml-auto h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-500" />
+    ) : ev.state === "error" ? (
+      <span className="ml-auto text-[10px] text-rose-600">error</span>
+    ) : null;
+
+  if (ev.kind === "search") {
+    return (
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
+        <span>🔎</span>
+        <span className="font-mono text-amber-700">searchGuidelines</span>
+        {ev.query && (
+          <span className="truncate font-mono text-slate-600">
+            &quot;{ev.query}&quot;
+          </span>
+        )}
+        {ev.hits && ev.hits.length > 0 && (
+          <span className="truncate text-slate-500">
+            → {ev.hits.map((h) => h.id).join(", ")}
+          </span>
+        )}
+        {ev.hits && ev.hits.length === 0 && (
+          <span className="italic text-slate-400">→ 該当なし</span>
+        )}
+        {stateBadge}
+      </div>
+    );
+  }
+  return (
+    <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
+      <span>📄</span>
+      <span className="font-mono text-amber-700">readGuideline</span>
+      {ev.id && <span className="font-mono text-slate-600">{ev.id}</span>}
+      {ev.found === true && ev.title && (
+        <span className="truncate text-slate-500">→ {ev.title}</span>
+      )}
+      {ev.found === false && (
+        <span className="italic text-rose-600">→ 見つかりませんでした</span>
+      )}
+      {stateBadge}
     </div>
   );
 }
