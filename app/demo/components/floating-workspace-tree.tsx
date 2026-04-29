@@ -8,6 +8,7 @@ import {
   Folder,
   FolderOpen,
   RefreshCw,
+  X,
 } from "lucide-react";
 import type { WorkspaceFileSummary } from "../types/opencode";
 import { useWorkspace } from "./workspace-context";
@@ -17,6 +18,7 @@ type Props = {
   selectedPath: string | null;
   onSelectPath: (path: string | null) => void;
   refreshSignal: number;
+  onDeletePath?: (path: string) => void | Promise<void>;
 };
 
 type TreeNode = {
@@ -67,6 +69,7 @@ export function FloatingWorkspaceTree({
   selectedPath,
   onSelectPath,
   refreshSignal,
+  onDeletePath,
 }: Props) {
   const { workspace } = useWorkspace();
   const workspaceId = workspace?.id ?? null;
@@ -188,6 +191,7 @@ export function FloatingWorkspaceTree({
                 onToggle={toggle}
                 selectedPath={selectedPath}
                 onSelect={onSelectPath}
+                onDelete={onDeletePath}
               />
             ))}
           </ul>
@@ -204,6 +208,7 @@ function TreeRow({
   onToggle,
   selectedPath,
   onSelect,
+  onDelete,
 }: {
   node: TreeNode;
   depth: number;
@@ -211,29 +216,50 @@ function TreeRow({
   onToggle: (path: string) => void;
   selectedPath: string | null;
   onSelect: (path: string) => void;
+  onDelete?: (path: string) => void | Promise<void>;
 }) {
   const indentPx = 8 + depth * 12;
 
   if (node.isFile) {
     const selected = selectedPath === node.fullPath;
+    // 削除可能なのは reports/ 配下のファイルのみ。corpus/ は seed データなので保護。
+    const deletable = !!onDelete && node.fullPath.startsWith("reports/");
     return (
       <li>
-        <button
-          type="button"
-          onClick={() => onSelect(node.fullPath)}
-          className={`flex w-full items-center gap-1 px-2 py-0.5 text-left hover:bg-slate-100 ${
+        <div
+          className={`group flex items-center gap-1 ${
             selected ? "bg-blue-100 text-blue-800" : "text-slate-700"
-          }`}
-          style={{ paddingLeft: indentPx }}
+          } hover:bg-slate-100`}
         >
-          <FileText className="h-3 w-3 shrink-0 text-slate-400" />
-          <span className="truncate font-mono">{node.name}</span>
-          {typeof node.size === "number" && (
-            <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-400">
-              {node.size}B
-            </span>
+          <button
+            type="button"
+            onClick={() => onSelect(node.fullPath)}
+            className="flex min-w-0 flex-1 items-center gap-1 px-2 py-0.5 text-left"
+            style={{ paddingLeft: indentPx }}
+          >
+            <FileText className="h-3 w-3 shrink-0 text-slate-400" />
+            <span className="truncate font-mono">{node.name}</span>
+            {typeof node.size === "number" && (
+              <span className="ml-auto shrink-0 font-mono text-[10px] text-slate-400">
+                {node.size}B
+              </span>
+            )}
+          </button>
+          {deletable && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                void onDelete!(node.fullPath);
+              }}
+              className="mr-1 shrink-0 rounded p-0.5 text-slate-400 opacity-0 hover:bg-rose-50 hover:text-rose-600 group-hover:opacity-100"
+              title="このレポートを削除"
+              aria-label={`${node.name} を削除`}
+            >
+              <X className="h-3 w-3" />
+            </button>
           )}
-        </button>
+        </div>
       </li>
     );
   }
@@ -266,6 +292,7 @@ function TreeRow({
               onToggle={onToggle}
               selectedPath={selectedPath}
               onSelect={onSelect}
+              onDelete={onDelete}
             />
           ))}
         </ul>

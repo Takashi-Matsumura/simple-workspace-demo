@@ -189,6 +189,31 @@ function FloatingWorkspaceInner({
     [onWorkspaceChange],
   );
 
+  // ツリービュー上から reports/ 配下のファイルを 1 つ削除する。
+  // サーバ側 (DELETE /api/opencode/files) でも reports/ プレフィックスは
+  // 強制ガードされているので、ここはユーザー導線の確認ダイアログに専念する。
+  const handleDelete = useCallback(
+    async (path: string) => {
+      if (!workspace) return;
+      if (!confirm(`${path} を削除します。よろしいですか？`)) return;
+      try {
+        const r = await fetch(
+          `/api/opencode/files?workspaceId=${encodeURIComponent(workspace.id)}&path=${encodeURIComponent(path)}`,
+          { method: "DELETE" },
+        );
+        if (!r.ok) {
+          const j = (await r.json().catch(() => ({}))) as { error?: string };
+          throw new Error(j.error || `HTTP ${r.status}`);
+        }
+        if (selectedPath === path) setSelectedPath(null);
+        setRefreshSignal((n) => n + 1);
+      } catch (err) {
+        alert(`削除に失敗しました: ${(err as Error).message}`);
+      }
+    },
+    [workspace, selectedPath],
+  );
+
   const left = (scenePos.x + view.x) * view.zoom;
   const top = (scenePos.y + view.y) * view.zoom;
 
@@ -269,6 +294,7 @@ function FloatingWorkspaceInner({
                     selectedPath={selectedPath}
                     onSelectPath={setSelectedPath}
                     refreshSignal={refreshSignal}
+                    onDeletePath={handleDelete}
                   />
                 </div>
                 <SplitDragger splitPct={splitPct} onChange={setSplitPct} />
