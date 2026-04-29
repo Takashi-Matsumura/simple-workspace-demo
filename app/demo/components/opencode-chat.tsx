@@ -114,10 +114,10 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
   };
 
   return (
-    <div className="flex h-full w-full bg-[#0b0b0f] text-white/90">
+    <div className="flex h-full w-full bg-white text-slate-700">
       <div className="flex h-full flex-1 flex-col">
         {/* モードセレクタ + ワークスペース表示 */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#100c1f] px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-slate-50 px-3 py-2">
           <ModeButton
             active={mode === "rag"}
             onClick={() => setMode("rag")}
@@ -139,20 +139,20 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
             color="#fb923c"
             icon={<Terminal className="h-3 w-3" />}
           />
-          <span className="ml-auto truncate font-mono text-[10px] text-white/40">
+          <span className="ml-auto truncate font-mono text-[10px] text-slate-400">
             ws: {workspaceId}
           </span>
         </div>
 
         {/* プリセット */}
-        <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-white/10 bg-[#0e0a1a] px-3 py-1.5">
+        <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-white px-3 py-1.5">
           {PRESETS_BY_MODE[mode].map((p) => (
             <button
               key={p.label}
               type="button"
               onClick={() => setInput(p.text)}
               disabled={busy}
-              className="rounded-full border border-white/15 bg-white/5 px-2.5 py-0.5 text-[11px] text-white/70 hover:bg-white/10 disabled:opacity-40"
+              className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
             >
               {p.label}
             </button>
@@ -162,11 +162,11 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
         {/* メッセージ履歴 */}
         <div
           ref={scrollRef}
-          className="flex-1 space-y-3 overflow-y-auto px-3 py-3"
+          className="flex-1 space-y-3 overflow-y-auto bg-white px-3 py-3"
           style={{ fontSize }}
         >
           {messages.length === 0 && !error && (
-            <p className="italic text-white/40">
+            <p className="italic text-slate-400">
               {mode === "rag"
                 ? "RAG: 1 回キーワード検索 → LLM がスニペットだけを根拠に回答します。多段ホップや語彙ギャップが必要な質問では弱い場面が見えます。"
                 : mode === "agentic"
@@ -175,12 +175,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
             </p>
           )}
           {error && (
-            <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-red-200">
+            <div className="rounded border border-rose-300 bg-rose-50 p-2 text-rose-700">
               <div className="mb-1 font-medium">エラー</div>
               <div className="whitespace-pre-wrap font-mono" style={{ fontSize: "0.85em" }}>
                 {error.message}
               </div>
-              <div className="mt-1 text-red-300/70" style={{ fontSize: "0.85em" }}>
+              <div className="mt-1 text-rose-600/80" style={{ fontSize: "0.85em" }}>
                 llama.cpp が起動しているか、LLAMA_BASE_URL の値を確認してください。
               </div>
             </div>
@@ -196,7 +196,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
             e.preventDefault();
             submit(input);
           }}
-          className="flex shrink-0 items-center gap-2 border-t border-white/10 bg-[#100c1f] px-3 py-2"
+          className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2"
         >
           <input
             value={input}
@@ -209,12 +209,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
                   ? "Agentic に質問..."
                   : "Coding Agent に指示..."
             }
-            className="flex-1 rounded border border-white/15 bg-black/30 px-2.5 py-1.5 text-[12px] text-white placeholder:text-white/30 focus:border-violet-400/60 focus:outline-none disabled:opacity-50"
+            className="flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="inline-flex items-center gap-1 rounded bg-violet-500 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-violet-400 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded bg-violet-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-violet-500 disabled:opacity-40"
             title="送信"
           >
             <Send className="h-3 w-3" />
@@ -251,7 +251,7 @@ function ModeButton({
       style={
         active
           ? { backgroundColor: color, borderColor: color, color: "white" }
-          : { borderColor: "rgba(255,255,255,0.15)", color: "rgba(255,255,255,0.6)" }
+          : { borderColor: "rgb(203 213 225)", color: "rgb(71 85 105)" }
       }
     >
       {icon}
@@ -269,8 +269,8 @@ function MessageView({
 }) {
   if (message.role === "user") {
     return (
-      <div className="border-l-2 border-white/30 pl-2 text-white/60">
-        <span className="font-medium text-white/80">Q: </span>
+      <div className="border-l-2 border-slate-300 pl-2 text-slate-500">
+        <span className="font-medium text-slate-700">Q: </span>
         {message.parts
           .filter((p) => p.type === "text")
           .map((p, i) => (
@@ -291,7 +291,7 @@ function MessageView({
           return (
             <div
               key={i}
-              className="whitespace-pre-wrap leading-relaxed text-white/90"
+              className="whitespace-pre-wrap leading-relaxed text-slate-800"
             >
               {part.text}
             </div>
@@ -301,7 +301,7 @@ function MessageView({
           return (
             <div
               key={i}
-              className="mt-1 uppercase tracking-wider text-white/30"
+              className="mt-1 uppercase tracking-wider text-slate-400"
               style={{ fontSize: "0.75em" }}
             >
               ── next step ──
@@ -344,19 +344,19 @@ function MessageView({
 
 function RetrievedList({ hits }: { hits: RetrievedHit[] }) {
   return (
-    <div className="rounded border border-emerald-400/30 bg-emerald-500/5 p-2">
-      <div className="mb-1 font-medium text-emerald-300">
+    <div className="rounded border border-emerald-300 bg-emerald-50 p-2">
+      <div className="mb-1 font-medium text-emerald-700">
         取得したチャンク ({hits.length})
       </div>
       {hits.length === 0 ? (
-        <div className="italic text-white/40">該当なし</div>
+        <div className="italic text-slate-400">該当なし</div>
       ) : (
         <ul className="space-y-0.5">
           {hits.map((h) => (
             <li key={h.id} className="flex gap-2">
-              <span className="shrink-0 text-white/40">[{h.id}]</span>
-              <span className="truncate text-white/80">{h.title}</span>
-              <span className="ml-auto shrink-0 text-white/40">
+              <span className="shrink-0 text-slate-400">[{h.id}]</span>
+              <span className="truncate text-slate-700">{h.title}</span>
+              <span className="ml-auto shrink-0 text-slate-400">
                 score {h.score}
               </span>
             </li>
@@ -369,23 +369,23 @@ function RetrievedList({ hits }: { hits: RetrievedHit[] }) {
 
 function SearchDocsView({ part }: { part: SearchDocsPart }) {
   return (
-    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2">
-      <div className="font-medium text-violet-200">
+    <div className="rounded border border-violet-300 bg-violet-50 p-2">
+      <div className="font-medium text-violet-700">
         🔎 searchDocs
         {part.input?.query && (
-          <span className="ml-2 font-mono text-white/90">
+          <span className="ml-2 font-mono text-slate-700">
             &quot;{part.input.query}&quot;
           </span>
         )}
       </div>
       {part.output && (
-        <ul className="mt-1 space-y-0.5 text-white/70">
+        <ul className="mt-1 space-y-0.5 text-slate-600">
           {part.output.hits.length === 0 ? (
-            <li className="italic text-white/40">該当なし</li>
+            <li className="italic text-slate-400">該当なし</li>
           ) : (
             part.output.hits.map((h) => (
               <li key={h.id} className="flex gap-2">
-                <span className="text-white/40">[{h.id}]</span>
+                <span className="text-slate-400">[{h.id}]</span>
                 <span className="truncate">{h.title}</span>
               </li>
             ))
@@ -398,20 +398,20 @@ function SearchDocsView({ part }: { part: SearchDocsPart }) {
 
 function ReadDocView({ part }: { part: ReadDocPart }) {
   return (
-    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2">
-      <div className="font-medium text-violet-200">
+    <div className="rounded border border-violet-300 bg-violet-50 p-2">
+      <div className="font-medium text-violet-700">
         📄 readDoc
         {part.input?.id && (
-          <span className="ml-2 font-mono text-white/90">{part.input.id}</span>
+          <span className="ml-2 font-mono text-slate-700">{part.input.id}</span>
         )}
       </div>
       {part.output && part.output.found && (
-        <div className="mt-1 truncate text-white/70">
+        <div className="mt-1 truncate text-slate-600">
           → {part.output.title}
         </div>
       )}
       {part.output && !part.output.found && (
-        <div className="mt-1 text-red-300">→ 見つかりませんでした</div>
+        <div className="mt-1 text-rose-600">→ 見つかりませんでした</div>
       )}
     </div>
   );
@@ -419,25 +419,25 @@ function ReadDocView({ part }: { part: ReadDocPart }) {
 
 function ListFilesView({ part }: { part: ListFilesPart }) {
   return (
-    <div className="rounded border border-orange-400/30 bg-orange-500/10 p-2">
-      <div className="flex items-center gap-1.5 font-medium text-orange-200">
+    <div className="rounded border border-orange-300 bg-orange-50 p-2">
+      <div className="flex items-center gap-1.5 font-medium text-orange-700">
         <FolderOpen className="h-3 w-3" />
         listFiles
         {part.input?.prefix && (
-          <span className="ml-1 font-mono text-white/90">
+          <span className="ml-1 font-mono text-slate-700">
             {part.input.prefix}
           </span>
         )}
       </div>
       {part.output?.ok === true && (
-        <ul className="mt-1 space-y-0.5 text-white/70">
+        <ul className="mt-1 space-y-0.5 text-slate-600">
           {part.output.files.length === 0 ? (
-            <li className="italic text-white/40">(empty)</li>
+            <li className="italic text-slate-400">(empty)</li>
           ) : (
             part.output.files.map((f) => (
               <li key={f.path} className="flex gap-2">
                 <span className="truncate font-mono">{f.path}</span>
-                <span className="ml-auto shrink-0 text-white/40">
+                <span className="ml-auto shrink-0 text-slate-400">
                   {f.size} B
                 </span>
               </li>
@@ -446,7 +446,7 @@ function ListFilesView({ part }: { part: ListFilesPart }) {
         </ul>
       )}
       {part.output?.ok === false && (
-        <div className="mt-1 text-red-300">→ {part.output.error}</div>
+        <div className="mt-1 text-rose-600">→ {part.output.error}</div>
       )}
     </div>
   );
@@ -454,24 +454,24 @@ function ListFilesView({ part }: { part: ListFilesPart }) {
 
 function ReadFileView({ part }: { part: ReadFilePart }) {
   return (
-    <div className="rounded border border-orange-400/30 bg-orange-500/10 p-2">
-      <div className="flex items-center gap-1.5 font-medium text-orange-200">
+    <div className="rounded border border-orange-300 bg-orange-50 p-2">
+      <div className="flex items-center gap-1.5 font-medium text-orange-700">
         <FileText className="h-3 w-3" />
         readFile
         {part.input?.path && (
-          <span className="ml-1 font-mono text-white/90">{part.input.path}</span>
+          <span className="ml-1 font-mono text-slate-700">{part.input.path}</span>
         )}
       </div>
       {part.output?.ok === true && part.output.found === true && (
-        <div className="mt-1 text-white/70">
+        <div className="mt-1 text-slate-600">
           → {part.output.content?.length ?? 0} chars
         </div>
       )}
       {part.output?.ok === true && part.output.found === false && (
-        <div className="mt-1 text-red-300">→ not found</div>
+        <div className="mt-1 text-rose-600">→ not found</div>
       )}
       {part.output?.ok === false && (
-        <div className="mt-1 text-red-300">→ {part.output.error}</div>
+        <div className="mt-1 text-rose-600">→ {part.output.error}</div>
       )}
     </div>
   );
@@ -479,8 +479,8 @@ function ReadFileView({ part }: { part: ReadFilePart }) {
 
 function WriteFileView({ part }: { part: WriteFilePart }) {
   return (
-    <div className="rounded border border-orange-400/30 bg-orange-500/10 p-2">
-      <div className="flex items-center gap-1.5 font-medium text-orange-200">
+    <div className="rounded border border-orange-300 bg-orange-50 p-2">
+      <div className="flex items-center gap-1.5 font-medium text-orange-700">
         {part.output?.ok === true && part.output.created ? (
           <FilePlus2 className="h-3 w-3" />
         ) : (
@@ -488,16 +488,16 @@ function WriteFileView({ part }: { part: WriteFilePart }) {
         )}
         writeFile
         {part.input?.path && (
-          <span className="ml-1 font-mono text-white/90">{part.input.path}</span>
+          <span className="ml-1 font-mono text-slate-700">{part.input.path}</span>
         )}
       </div>
       {part.output?.ok === true && (
-        <div className="mt-1 text-white/70">
+        <div className="mt-1 text-slate-600">
           → {part.output.created ? "created" : "updated"} ({part.output.size} B)
         </div>
       )}
       {part.output?.ok === false && (
-        <div className="mt-1 text-red-300">→ {part.output.error}</div>
+        <div className="mt-1 text-rose-600">→ {part.output.error}</div>
       )}
     </div>
   );
@@ -505,21 +505,21 @@ function WriteFileView({ part }: { part: WriteFilePart }) {
 
 function DeleteFileView({ part }: { part: DeleteFilePart }) {
   return (
-    <div className="rounded border border-orange-400/30 bg-orange-500/10 p-2">
-      <div className="flex items-center gap-1.5 font-medium text-orange-200">
+    <div className="rounded border border-orange-300 bg-orange-50 p-2">
+      <div className="flex items-center gap-1.5 font-medium text-orange-700">
         <Trash2 className="h-3 w-3" />
         deleteFile
         {part.input?.path && (
-          <span className="ml-1 font-mono text-white/90">{part.input.path}</span>
+          <span className="ml-1 font-mono text-slate-700">{part.input.path}</span>
         )}
       </div>
       {part.output?.ok === true && (
-        <div className="mt-1 text-white/70">
+        <div className="mt-1 text-slate-600">
           → {part.output.deleted ? "deleted" : "not found"}
         </div>
       )}
       {part.output?.ok === false && (
-        <div className="mt-1 text-red-300">→ {part.output.error}</div>
+        <div className="mt-1 text-rose-600">→ {part.output.error}</div>
       )}
     </div>
   );
@@ -539,7 +539,6 @@ function FileBrowser({
   const [content, setContent] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
 
-  // ファイル一覧を取りに行くだけの純関数 (state 更新はしない)。
   const fetchFiles = useCallback(async (): Promise<WorkspaceFileSummary[]> => {
     const r = await fetch(
       `/api/opencode/files?workspaceId=${encodeURIComponent(workspaceId)}`,
@@ -550,7 +549,6 @@ function FileBrowser({
     return j.files;
   }, [workspaceId]);
 
-  // ボタン押下用 (スピナー付き)。エフェクト内では呼ばない。
   const refresh = useCallback(async () => {
     setRefreshing(true);
     try {
@@ -562,7 +560,6 @@ function FileBrowser({
     }
   }, [fetchFiles]);
 
-  // 初期ロード / workspace 切替。setState は await の後で行うので react-hooks ルールに抵触しない。
   useEffect(() => {
     let cancelled = false;
     fetchFiles()
@@ -577,7 +574,6 @@ function FileBrowser({
     };
   }, [fetchFiles]);
 
-  // busy → idle 遷移、または writeFile / deleteFile が完了したターンで再取得。
   const prevBusy = useRef(false);
   const lastFileOpKey = useRef<string | null>(null);
   useEffect(() => {
@@ -632,17 +628,17 @@ function FileBrowser({
   );
 
   return (
-    <aside className="flex h-full w-64 shrink-0 flex-col border-l border-white/10 bg-[#0e0a1a]">
-      <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-2">
-        <FolderOpen className="h-3.5 w-3.5 text-orange-300" />
-        <span className="text-[11px] font-medium text-white/80">
+    <aside className="flex h-full w-64 shrink-0 flex-col border-l border-slate-200 bg-slate-50">
+      <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-2">
+        <FolderOpen className="h-3.5 w-3.5 text-orange-500" />
+        <span className="text-[11px] font-medium text-slate-700">
           Workspace Files
         </span>
         <button
           type="button"
           onClick={refresh}
           disabled={refreshing}
-          className="ml-auto rounded p-0.5 text-white/60 hover:bg-white/10 disabled:opacity-40"
+          className="ml-auto rounded p-0.5 text-slate-500 hover:bg-slate-200 disabled:opacity-40"
           title="一覧を更新"
         >
           <RefreshCw className={`h-3 w-3 ${refreshing ? "animate-spin" : ""}`} />
@@ -650,11 +646,11 @@ function FileBrowser({
       </div>
       <div className="min-h-0 flex-1 overflow-y-auto">
         {files === null ? (
-          <div className="px-3 py-2 text-[11px] italic text-white/40">
+          <div className="px-3 py-2 text-[11px] italic text-slate-400">
             読み込み中...
           </div>
         ) : files.length === 0 ? (
-          <div className="px-3 py-2 text-[11px] italic text-white/40">
+          <div className="px-3 py-2 text-[11px] italic text-slate-400">
             (まだファイルはありません)
           </div>
         ) : (
@@ -664,13 +660,13 @@ function FileBrowser({
                 <button
                   type="button"
                   onClick={() => openFile(f.path)}
-                  className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] hover:bg-white/5 ${
-                    selected === f.path ? "bg-white/10 text-orange-200" : "text-white/70"
+                  className={`flex w-full items-center gap-2 px-3 py-1 text-left text-[11px] hover:bg-slate-100 ${
+                    selected === f.path ? "bg-orange-50 text-orange-700" : "text-slate-600"
                   }`}
                 >
                   <FileText className="h-3 w-3 shrink-0" />
                   <span className="truncate font-mono">{f.path}</span>
-                  <span className="ml-auto shrink-0 text-white/40">{f.size}B</span>
+                  <span className="ml-auto shrink-0 text-slate-400">{f.size}B</span>
                 </button>
               </li>
             ))}
@@ -678,9 +674,9 @@ function FileBrowser({
         )}
       </div>
       {selected && (
-        <div className="flex max-h-[40%] shrink-0 flex-col border-t border-white/10 bg-black/40">
-          <div className="flex shrink-0 items-center gap-2 border-b border-white/10 px-3 py-1">
-            <span className="truncate font-mono text-[10px] text-orange-200">
+        <div className="flex max-h-[40%] shrink-0 flex-col border-t border-slate-200 bg-white">
+          <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 px-3 py-1">
+            <span className="truncate font-mono text-[10px] text-orange-700">
               {selected}
             </span>
             <button
@@ -689,13 +685,13 @@ function FileBrowser({
                 setSelected(null);
                 setContent(null);
               }}
-              className="ml-auto rounded p-0.5 text-white/40 hover:bg-white/10"
+              className="ml-auto rounded p-0.5 text-slate-400 hover:bg-slate-200"
               title="閉じる"
             >
               ×
             </button>
           </div>
-          <pre className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] text-white/70 whitespace-pre-wrap break-all">
+          <pre className="min-h-0 flex-1 overflow-auto px-3 py-2 font-mono text-[10px] text-slate-700 whitespace-pre-wrap break-all">
             {content ?? "loading..."}
           </pre>
         </div>
