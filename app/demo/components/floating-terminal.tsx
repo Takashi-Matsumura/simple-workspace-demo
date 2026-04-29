@@ -18,6 +18,7 @@ import { use3dFlip } from "../hooks/use-3d-flip";
 import { terminalFontSizeKey } from "../lib/storage-keys";
 import { OpenCodeLogo } from "./opencode-logo";
 import { OpenCodeHelp } from "./opencode-help";
+import { ReportHelp } from "./report-help";
 
 const OpenCodeChat = dynamic(() => import("./opencode-chat"), {
   ssr: false,
@@ -245,24 +246,7 @@ export default function FloatingTerminal({
           {!minimized && (
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-lg bg-white">
               {variant === "report" ? (
-                <div
-                  className="flex-1 overflow-y-auto px-3 py-3 font-mono text-slate-600"
-                  style={{ fontSize }}
-                >
-                  <p className="mb-2 text-slate-500">
-                    訪問介護のヘルパーが書いた自由記述メモを、所定の Markdown
-                    テンプレートに整形して workspace の{" "}
-                    <span className="font-mono">reports/</span>{" "}
-                    フォルダに保存するデモパネルです。
-                  </p>
-                  <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
-                    <li>訪問日 / ヘルパー名 / ゲスト名 + メモを入力</li>
-                    <li>「整形してファイル保存」で AI 出力をストリーム表示</li>
-                    <li>
-                      完了後、Workspace ツリーが自動更新され該当ファイルが選択されます
-                    </li>
-                  </ul>
-                </div>
+                <ReportHelp fontSize={fontSize} />
               ) : (
                 <OpenCodeHelp fontSize={fontSize} />
               )}
