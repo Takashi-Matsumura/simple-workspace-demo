@@ -117,7 +117,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
     <div className="flex h-full w-full bg-white text-slate-700">
       <div className="flex h-full flex-1 flex-col">
         {/* モードセレクタ + ワークスペース表示 */}
-        <div className="flex shrink-0 items-center gap-2 border-b border-slate-200 bg-white px-3 py-2">
+        <div className="flex shrink-0 items-center gap-2 border-b border-blue-200 bg-blue-50 px-3 py-2">
           <ModeButton
             active={mode === "rag"}
             onClick={() => setMode("rag")}

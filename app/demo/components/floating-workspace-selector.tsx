@@ -88,7 +88,7 @@ export function FloatingWorkspaceSelector({
   );
 
   return (
-    <div className="relative flex flex-nowrap items-center gap-1.5 border-b border-slate-200 bg-white px-2 py-1">
+    <div className="relative flex flex-nowrap items-center gap-1.5 border-b border-slate-300 bg-slate-100 px-2 py-1">
       <button
         type="button"
         onClick={createWorkspace}
