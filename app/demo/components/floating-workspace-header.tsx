@@ -1,6 +1,6 @@
 "use client";
 
-import { CircleMinus, CirclePlus, Maximize2 } from "lucide-react";
+import { ArrowUpDown, CircleMinus, CirclePlus, Maximize2 } from "lucide-react";
 import type { usePointerDrag } from "../hooks/use-pointer-drag";
 import { useWorkspace } from "./workspace-context";
 
@@ -11,6 +11,9 @@ type Props = {
   sceneSize: { w: number; h: number };
   onZoomToFit?: (rect: { x: number; y: number; w: number; h: number }) => void;
   headerHandlers: ReturnType<typeof usePointerDrag>;
+  flipped?: boolean;
+  onFlip?: () => void;
+  title?: string;
 };
 
 export function FloatingWorkspaceHeader({
@@ -20,6 +23,9 @@ export function FloatingWorkspaceHeader({
   sceneSize,
   onZoomToFit,
   headerHandlers,
+  flipped,
+  onFlip,
+  title = "workspaces",
 }: Props) {
   const { workspace } = useWorkspace();
   return (
@@ -39,7 +45,7 @@ export function FloatingWorkspaceHeader({
         >
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
-        <span className="font-mono font-medium text-slate-700">workspaces</span>
+        <span className="font-mono font-medium text-slate-700">{title}</span>
       </div>
       <div className="flex items-center gap-2">
         <span className="truncate font-mono text-[10px] text-slate-400">
@@ -69,6 +75,19 @@ export function FloatingWorkspaceHeader({
           >
             <CirclePlus className="h-4 w-4" />
           </button>
+          {onFlip && (
+            <button
+              type="button"
+              onClick={(e) => {
+                e.stopPropagation();
+                onFlip();
+              }}
+              className="ml-1 rounded p-0.5 text-slate-500 hover:bg-slate-200 hover:text-slate-700"
+              title={flipped ? "Workspace に戻す" : "設定を開く"}
+            >
+              <ArrowUpDown className="h-3.5 w-3.5 rotate-90" />
+            </button>
+          )}
         </div>
       </div>
     </div>
