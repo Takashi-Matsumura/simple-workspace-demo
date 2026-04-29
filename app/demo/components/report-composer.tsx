@@ -325,6 +325,30 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const busy = status === "streaming" || status === "checking";
   const canSubmit = !busy && freeText.trim().length > 0;
   const hasResult = previewText.length > 0 || savedPath !== null;
+  // Step 2 中は LLM が tool 呼び出しと本文再生成を行ったり来たりする。
+  // step 数だけだと進捗が動かないように見えるので、現在進行中の活動を
+  // フェーズで表示する: 検索中 / 読込中 / 再生成中 / 思考中。
+  const runningTool = toolEvents.find((e) => e.state === "running");
+  const completedSearches = toolEvents.filter(
+    (e) => e.kind === "search" && e.state === "done",
+  ).length;
+  const completedReads = toolEvents.filter(
+    (e) => e.kind === "read" && e.state === "done",
+  ).length;
+  const phase: { icon: string; label: string } = (() => {
+    if (status !== "checking") return { icon: "", label: "" };
+    if (runningTool?.kind === "search")
+      return { icon: "🔎", label: "ガイドライン検索中" };
+    if (runningTool?.kind === "read")
+      return { icon: "📄", label: "ガイドライン読込中" };
+    if (previewText.length > 0)
+      return { icon: "✏️", label: "レポート再生成中" };
+    return { icon: "🧠", label: "思考中" };
+  })();
+  const phaseStats =
+    status === "checking"
+      ? `step ${stepIndex} · 🔎${completedSearches} · 📄${completedReads} · ${previewText.length}文字`
+      : "";
 
   return (
     <div
@@ -447,11 +471,25 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
 
         {/* 右: 整形プレビュー */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
+          <div
+            className={`flex shrink-0 items-center gap-1.5 border-b px-3 py-1 text-[11px] font-semibold ${
+              status === "checking"
+                ? "border-amber-200 bg-amber-50/60 text-amber-800"
+                : "border-teal-200 bg-teal-50/60 text-teal-700"
+            }`}
+          >
             <FileCheck2 className="h-3 w-3" />
-            {status === "checking"
-              ? `ガイドライン照合中 (step ${stepIndex}/8)`
-              : "整形プレビュー"}
+            {status === "checking" ? (
+              <>
+                <span>{phase.icon}</span>
+                <span>ガイドライン照合中 — {phase.label}</span>
+                <span className="ml-2 font-mono text-[10px] font-normal text-amber-700/80">
+                  {phaseStats}
+                </span>
+              </>
+            ) : (
+              "整形プレビュー"
+            )}
             {busy && (
               <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
                 <span
@@ -492,7 +530,14 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 太字 + サマリで追記されます。
               </p>
             )}
-            {previewText.length > 0 && <MarkdownText text={previewText} />}
+            {previewText.length > 0 && (
+              <MarkdownText
+                text={previewText}
+                highlightStrong={
+                  status === "checking" || status === "done" || status === "error"
+                }
+              />
+            )}
           </div>
         </div>
       </div>

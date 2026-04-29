@@ -5,6 +5,9 @@ import remarkGfm from "remark-gfm";
 
 type Props = {
   text: string;
+  // ガイドライン照合後の本文ハイライト用。`**…**` を蛍光ペン風の
+  // 黄色マーカー + 太字に切り替えて、確認すべき箇所を視覚的に強調する。
+  highlightStrong?: boolean;
 };
 
 // LLM が回答に埋め込む `[doc=xxx]` を、特殊な hash リンク `#doc/xxx` を持つ
@@ -27,7 +30,7 @@ export type OpenPathEventDetail = { path: string };
 
 // LLM 回答用の軽量 Markdown レンダラ。
 // @tailwindcss/typography に依存せず、必要なタグだけ手書きで色付けする。
-export function MarkdownText({ text }: Props) {
+export function MarkdownText({ text, highlightStrong = false }: Props) {
   return (
     <div className="space-y-2 leading-relaxed text-slate-800">
       <ReactMarkdown
@@ -55,9 +58,19 @@ export function MarkdownText({ text }: Props) {
           ol: ({ children }) => (
             <ol className="list-decimal space-y-0.5 pl-5">{children}</ol>
           ),
-          strong: ({ children }) => (
-            <strong className="font-semibold text-slate-900">{children}</strong>
-          ),
+          strong: ({ children }) =>
+            highlightStrong ? (
+              <strong
+                className="rounded border-l-2 border-amber-400 bg-amber-100 px-1 font-bold text-amber-900"
+                title="人間の確認が必要な箇所 (Step 2 で抽出)"
+              >
+                {children}
+              </strong>
+            ) : (
+              <strong className="font-semibold text-slate-900">
+                {children}
+              </strong>
+            ),
           em: ({ children }) => <em className="italic">{children}</em>,
           a: ({ children, href }) => {
             // `#doc/xxx` 形式のリンクは引用ピン。クリックで workspace パネルに
