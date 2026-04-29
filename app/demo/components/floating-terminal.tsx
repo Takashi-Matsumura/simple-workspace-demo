@@ -153,7 +153,7 @@ export default function FloatingTerminal({
       className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
       {...resizeHandlers}
       style={{
-        background: "linear-gradient(135deg, transparent 50%, rgba(100,116,139,0.4) 50%)",
+        background: "linear-gradient(135deg, transparent 50%, rgba(59,130,246,0.55) 50%)",
       }}
     />
   );
