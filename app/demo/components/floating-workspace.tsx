@@ -1,7 +1,12 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { OPEN_DOC_EVENT, type OpenDocEventDetail } from "./markdown-text";
+import {
+  OPEN_DOC_EVENT,
+  OPEN_PATH_EVENT,
+  type OpenDocEventDetail,
+  type OpenPathEventDetail,
+} from "./markdown-text";
 import type { View } from "./whiteboard-canvas";
 import { usePointerDrag } from "../hooks/use-pointer-drag";
 import { usePointerResize } from "../hooks/use-pointer-resize";
@@ -35,6 +40,7 @@ type FloatingWorkspaceProps = {
   workspace: Workspace | null;
   onWorkspaceChange: (ws: Workspace | null) => void;
   onStartOpencode: () => void;
+  onStartReport: () => void;
   onZoomToFit?: (rect: { x: number; y: number; w: number; h: number }) => void;
   z: number;
   onFocus?: () => void;
@@ -94,6 +100,7 @@ function SplitDragger({
 function FloatingWorkspaceInner({
   view,
   onStartOpencode,
+  onStartReport,
   onZoomToFit,
   z,
   onFocus,
@@ -141,6 +148,22 @@ function FloatingWorkspaceInner({
     };
     window.addEventListener(OPEN_DOC_EVENT, handler);
     return () => window.removeEventListener(OPEN_DOC_EVENT, handler);
+  }, [workspace, setFlipped, onFocus]);
+
+  // 任意の path を直接指定して開くイベント（レポート整形後の自動オープン用）。
+  // ツリーに新しく書かれたファイルを反映するため refreshSignal も bump する。
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<OpenPathEventDetail>).detail;
+      const path = detail?.path;
+      if (!path || !workspace) return;
+      setRefreshSignal((n) => n + 1);
+      setSelectedPath(path);
+      setFlipped(false);
+      onFocus?.();
+    };
+    window.addEventListener(OPEN_PATH_EVENT, handler);
+    return () => window.removeEventListener(OPEN_PATH_EVENT, handler);
   }, [workspace, setFlipped, onFocus]);
 
   const headerHandlers = usePointerDrag(view, scenePos, setScenePos, {
@@ -223,6 +246,7 @@ function FloatingWorkspaceInner({
 
           <FloatingWorkspaceSelector
             onStartOpencode={onStartOpencode}
+            onStartReport={onStartReport}
             onOpen={handleOpen}
           />
 

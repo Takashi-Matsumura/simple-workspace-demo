@@ -1,5 +1,5 @@
 import type { ReactNode } from "react";
-import { Sparkles } from "lucide-react";
+import { ClipboardList, Sparkles } from "lucide-react";
 import type { TerminalVariant } from "../components/floating-terminal";
 import type { TerminalPanelId } from "../types/panels";
 
@@ -24,5 +24,14 @@ export const TERMINAL_PANEL_DEFINITIONS: readonly TerminalPanelDefinition[] = [
     switcherTitle: "OpenCode パネルを最前面に",
     switcherAccent: "#2563eb",
     switcherIcon: <Sparkles className="h-3 w-3" />,
+  },
+  {
+    id: "report",
+    variant: "report",
+    slot: "right",
+    switcherLabel: "訪問レポート",
+    switcherTitle: "訪問介護レポート生成パネルを最前面に",
+    switcherAccent: "#0d9488",
+    switcherIcon: <ClipboardList className="h-3 w-3" />,
   },
 ];

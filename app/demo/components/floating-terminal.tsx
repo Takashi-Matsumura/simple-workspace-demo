@@ -22,12 +22,15 @@ import { OpenCodeHelp } from "./opencode-help";
 const OpenCodeChat = dynamic(() => import("./opencode-chat"), {
   ssr: false,
 });
+const ReportComposer = dynamic(() => import("./report-composer"), {
+  ssr: false,
+});
 
 type ScenePos = { x: number; y: number };
 type SceneSize = { w: number; h: number };
 
 export type TerminalSession = { workspaceId: string; nonce: number };
-export type TerminalVariant = "opencode";
+export type TerminalVariant = "opencode" | "report";
 
 // ビューポート中心にパネル中央が来るように scenePos を逆算。
 function defaultScenePos(
@@ -81,6 +84,12 @@ export default function FloatingTerminal({
 
   const left = (scenePos.x + view.x) * view.zoom;
   const top = (scenePos.y + view.y) * view.zoom;
+
+  // variant でフレーム枠の色とヘッダ副題を出し分ける（ヘッダ背景は共通）。
+  const frameBorder =
+    variant === "report" ? "border-teal-400" : "border-blue-400";
+  const frontSublabel =
+    variant === "report" ? "訪問介護レポート" : "RAG vs Agentic";
 
   // ヘッダーは表/裏共通。ライトテーマ + opencode ロゴ。
   const headerBar = (sublabel: string) => (
@@ -188,14 +197,24 @@ export default function FloatingTerminal({
       >
         {/* Front: chat */}
         <div
-          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
+          className={`flex flex-col rounded-lg border-2 ${frameBorder} bg-white shadow-2xl shadow-slate-900/20`}
           style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}
         >
-          {headerBar("RAG vs Agentic")}
+          {headerBar(frontSublabel)}
           {!minimized && (
             <div className="relative flex-1 overflow-hidden rounded-b-lg bg-white">
               {session ? (
-                <OpenCodeChat workspaceId={session.workspaceId} fontSize={fontSize} />
+                variant === "report" ? (
+                  <ReportComposer
+                    workspaceId={session.workspaceId}
+                    fontSize={fontSize}
+                  />
+                ) : (
+                  <OpenCodeChat
+                    workspaceId={session.workspaceId}
+                    fontSize={fontSize}
+                  />
+                )
               ) : (
                 <div className="flex h-full w-full items-center justify-center px-6 text-center font-mono text-xs text-slate-400">
                   Workspace パネルからワークスペースを選択して起動してください
@@ -208,7 +227,7 @@ export default function FloatingTerminal({
 
         {/* Back: help */}
         <div
-          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
+          className={`flex flex-col rounded-lg border-2 ${frameBorder} bg-white shadow-2xl shadow-slate-900/20`}
           style={{
             position: "absolute",
             inset: 0,
@@ -219,7 +238,28 @@ export default function FloatingTerminal({
           {headerBar("ヘルプ")}
           {!minimized && (
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-lg bg-white">
-              <OpenCodeHelp fontSize={fontSize} />
+              {variant === "report" ? (
+                <div
+                  className="flex-1 overflow-y-auto px-3 py-3 font-mono text-slate-600"
+                  style={{ fontSize }}
+                >
+                  <p className="mb-2 text-slate-500">
+                    訪問介護のヘルパーが書いた自由記述メモを、所定の Markdown
+                    テンプレートに整形して workspace の{" "}
+                    <span className="font-mono">reports/</span>{" "}
+                    フォルダに保存するデモパネルです。
+                  </p>
+                  <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+                    <li>訪問日 / ヘルパー名 / ゲスト名 + メモを入力</li>
+                    <li>「整形してファイル保存」で AI 出力をストリーム表示</li>
+                    <li>
+                      完了後、Workspace ツリーが自動更新され該当ファイルが選択されます
+                    </li>
+                  </ul>
+                </div>
+              ) : (
+                <OpenCodeHelp fontSize={fontSize} />
+              )}
               {resizeHandle}
             </div>
           )}

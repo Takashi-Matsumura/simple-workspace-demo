@@ -99,6 +99,7 @@ export default function Home() {
         workspace={workspace}
         onWorkspaceChange={handleWorkspaceChange}
         onStartOpencode={() => openTerminal("opencode")}
+        onStartReport={() => openTerminal("report")}
         onZoomToFit={(rect) => canvasRef.current?.zoomToRect(rect)}
         z={panels.zFor("workspace")}
         onFocus={() => panels.bringToFront("workspace")}

@@ -19,6 +19,12 @@ function preprocessDocRefs(input: string): string {
 export const OPEN_DOC_EVENT = "workspace:open-doc";
 export type OpenDocEventDetail = { id: string };
 
+// `workspace:open-path` は仮想 FS の path を直接指定して開くイベント。
+// レポート整形パネルなど、corpus id を持たない外部から workspace ツリーに
+// ファイルを反映 + 自動選択させる用途で使う。
+export const OPEN_PATH_EVENT = "workspace:open-path";
+export type OpenPathEventDetail = { path: string };
+
 // LLM 回答用の軽量 Markdown レンダラ。
 // @tailwindcss/typography に依存せず、必要なタグだけ手書きで色付けする。
 export function MarkdownText({ text }: Props) {
