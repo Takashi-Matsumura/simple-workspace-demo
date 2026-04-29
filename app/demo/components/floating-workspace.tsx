@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { OPEN_DOC_EVENT, type OpenDocEventDetail } from "./markdown-text";
 import type { View } from "./whiteboard-canvas";
 import { usePointerDrag } from "../hooks/use-pointer-drag";
 import { usePointerResize } from "../hooks/use-pointer-resize";
@@ -12,6 +13,8 @@ import { WorkspaceContextProvider, useWorkspace } from "./workspace-context";
 import { FloatingWorkspaceHeader } from "./floating-workspace-header";
 import { FloatingWorkspaceSelector } from "./floating-workspace-selector";
 import { FloatingWorkspaceSettings } from "./floating-workspace-settings";
+import { FloatingWorkspaceTree } from "./floating-workspace-tree";
+import { FloatingWorkspacePreview } from "./floating-workspace-preview";
 
 type ScenePos = { x: number; y: number };
 type SceneSize = { w: number; h: number };
@@ -48,6 +51,46 @@ export default function FloatingWorkspace(props: FloatingWorkspaceProps) {
   );
 }
 
+// ツリー / プレビューの幅を %  で切り分ける垂直ドラッガ。
+// 親の bounding rect 基準で onPointerMove を %  に変換するだけのシンプル実装。
+function SplitDragger({
+  splitPct,
+  onChange,
+}: {
+  splitPct: number;
+  onChange: (pct: number) => void;
+}) {
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = e.currentTarget.parentElement;
+        if (!parent) return;
+        const rect = parent.getBoundingClientRect();
+        const target = e.currentTarget;
+        target.setPointerCapture(e.pointerId);
+        const move = (ev: PointerEvent) => {
+          const x = ev.clientX - rect.left;
+          const pct = Math.max(15, Math.min(80, (x / rect.width) * 100));
+          onChange(pct);
+        };
+        const up = () => {
+          target.releasePointerCapture(e.pointerId);
+          target.removeEventListener("pointermove", move as EventListener);
+          target.removeEventListener("pointerup", up as EventListener);
+        };
+        target.addEventListener("pointermove", move as EventListener);
+        target.addEventListener("pointerup", up as EventListener);
+      }}
+      className="w-1 shrink-0 cursor-col-resize bg-slate-200 hover:bg-blue-300"
+      title={`split: ${Math.round(splitPct)}%`}
+    />
+  );
+}
+
 function FloatingWorkspaceInner({
   view,
   onStartOpencode,
@@ -55,15 +98,18 @@ function FloatingWorkspaceInner({
   z,
   onFocus,
 }: FloatingWorkspaceProps) {
-  const { onWorkspaceChange, notice, error } = useWorkspace();
+  const { workspace, onWorkspaceChange, notice, error } = useWorkspace();
   const [scenePos, setScenePos] = useState<ScenePos>(() => {
     if (typeof window === "undefined") return { x: 60, y: 60 };
     return {
-      x: Math.max(0, (window.innerWidth - 520) / 2),
-      y: Math.max(0, (window.innerHeight - 200) / 2),
+      x: Math.max(0, (window.innerWidth - 720) / 2),
+      y: Math.max(0, (window.innerHeight - 420) / 2),
     };
   });
-  const [sceneSize, setSceneSize] = useState<SceneSize>({ w: 520, h: 200 });
+  const [sceneSize, setSceneSize] = useState<SceneSize>({ w: 720, h: 420 });
+  const [splitPct, setSplitPct] = useState<number>(38);
+  const [selectedPath, setSelectedPath] = useState<string | null>(null);
+  const [refreshSignal, setRefreshSignal] = useState(0);
 
   const { fontSize, changeFontSize } = useFontSize(STORAGE_KEYS.workspaceFontSize, {
     default: 12,
@@ -71,7 +117,31 @@ function FloatingWorkspaceInner({
     max: 20,
   });
 
-  const { flipped, toggle: flip } = use3dFlip(false);
+  const { flipped, setFlipped } = use3dFlip(false);
+  const flip = useCallback(() => setFlipped((f) => !f), [setFlipped]);
+
+  // 回答中の `[doc=xxx]` クリックで該当ファイルを tree+preview に開く。
+  // doc id は corpus の category prefix から path を組み立てる。
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<OpenDocEventDetail>).detail;
+      const id = detail?.id;
+      if (!id || !workspace) return;
+      const category = id.startsWith("spec-")
+        ? "spec"
+        : id.startsWith("faq-")
+          ? "faq"
+          : id.startsWith("incident-")
+            ? "incident"
+            : null;
+      if (!category) return;
+      setSelectedPath(`corpus/${category}/${id}.md`);
+      setFlipped(false);
+      onFocus?.();
+    };
+    window.addEventListener(OPEN_DOC_EVENT, handler);
+    return () => window.removeEventListener(OPEN_DOC_EVENT, handler);
+  }, [workspace, setFlipped, onFocus]);
 
   const headerHandlers = usePointerDrag(view, scenePos, setScenePos, {
     skipSelector: "button,input",
@@ -85,6 +155,8 @@ function FloatingWorkspaceInner({
     async (e: WorkspaceListEntry) => {
       const ws = workspaceToFull(e);
       onWorkspaceChange(ws);
+      setSelectedPath(null);
+      setRefreshSignal((n) => n + 1);
       try {
         await apiTouchWorkspace(ws.id);
       } catch {
@@ -161,11 +233,37 @@ function FloatingWorkspaceInner({
             <div className="border-b border-sky-200 bg-sky-50 px-3 py-1 font-mono text-[11px] text-sky-800 break-all">{notice}</div>
           )}
 
-          <div
-            className="relative flex-1 px-3 py-2 font-mono text-slate-500"
-            style={{ fontSize }}
-          >
-            ホワイトボードに自由に描けます。OpenCode パネルは workspace を選択した後に起動できます。
+          <div className="relative flex min-h-0 flex-1">
+            {workspace ? (
+              <>
+                <div
+                  className="min-w-0 overflow-hidden border-r border-slate-200"
+                  style={{ width: `${splitPct}%` }}
+                >
+                  <FloatingWorkspaceTree
+                    fontSize={fontSize}
+                    selectedPath={selectedPath}
+                    onSelectPath={setSelectedPath}
+                    refreshSignal={refreshSignal}
+                  />
+                </div>
+                <SplitDragger splitPct={splitPct} onChange={setSplitPct} />
+                <div className="min-w-0 flex-1">
+                  <FloatingWorkspacePreview
+                    fontSize={fontSize}
+                    selectedPath={selectedPath}
+                  />
+                </div>
+              </>
+            ) : (
+              <div
+                className="flex-1 px-3 py-2 font-mono text-slate-500"
+                style={{ fontSize }}
+              >
+                ホワイトボードに自由に描けます。OpenCode パネルや、ファイルツリーは
+                workspace を選択した後に表示されます。
+              </div>
+            )}
             {resizeHandle}
           </div>
         </div>
