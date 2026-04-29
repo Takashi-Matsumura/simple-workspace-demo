@@ -227,19 +227,23 @@ export function ReportHelp({ fontSize }: Props) {
       >
         <p className="mb-1 text-slate-700">
           裏面のタブ「<span className="font-semibold">システムプロンプト</span>」
-          で、Step 1 / Step 2 のシステムプロンプトをそれぞれ上書きできます。
+          で、Step 1 / Step 2 のシステムプロンプトをそれぞれ編集できます。
+          初期値はサーバ側のデフォルト
+          (<span className="font-mono">REPORT_SYSTEM_PROMPT</span> /{" "}
+          <span className="font-mono">GUIDELINE_CHECK_PROMPT</span>) が
+          そのまま入っています。
         </p>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
           <li>
-            保存先はブラウザの localStorage (workspace 単位ではなく端末単位)
+            「保存」を押すと編集した値がブラウザの localStorage
+            に保持され (workspace 単位ではなく端末単位)、以降のリクエストで
+            その値が使われる
           </li>
           <li>
-            空のまま保存するとサーバ側のデフォルト
-            (<span className="font-mono">REPORT_SYSTEM_PROMPT</span> /{" "}
-            <span className="font-mono">GUIDELINE_CHECK_PROMPT</span>) に戻る
+            各フィールドの「デフォルトに戻す」で、その Step
+            だけテキストとローカル保存値を初期値にリセット
           </li>
-          <li>「すべてデフォルトに戻す」でクリア</li>
-          <li>各プロンプトの「デフォルトを表示」で現在のサーバ既定を確認可能</li>
+          <li>「すべてデフォルトに戻す」で Step 1 / Step 2 を一括リセット</li>
         </ul>
       </Section>
 

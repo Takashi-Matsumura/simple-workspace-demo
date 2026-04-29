@@ -78,38 +78,56 @@ function TabButton({
 type DraftSaved = "saved" | "dirty" | "idle";
 
 function PromptEditor({ fontSize }: { fontSize: number }) {
-  // デフォルトを placeholder で見せ、上書き値だけを value で保持する。
-  // localStorage 読み出しは lazy init で 1 度だけ。SSR では window が
-  // 無いので getReportPromptOverrides() が undefined を返す → 空文字。
+  // 初期値は localStorage の上書きがあればそれ、なければサーバ側デフォルトを
+  // 直接表示する。「デフォルトに戻す」ボタンで個別 / 全体クリアできる。
+  // SSR 時は window が無いので getReportPromptOverrides() が undefined を返し、
+  // デフォルトが採用される。
   const [step1, setStep1] = useState<string>(
-    () => getReportPromptOverrides().step1 ?? "",
+    () => getReportPromptOverrides().step1 ?? REPORT_SYSTEM_PROMPT,
   );
   const [step2, setStep2] = useState<string>(
-    () => getReportPromptOverrides().step2 ?? "",
+    () => getReportPromptOverrides().step2 ?? GUIDELINE_CHECK_PROMPT,
   );
   const [step1Saved, setStep1Saved] = useState<DraftSaved>("idle");
   const [step2Saved, setStep2Saved] = useState<DraftSaved>("idle");
 
   const saveStep1 = () => {
-    setReportPromptOverride("step1", step1.trim().length > 0 ? step1 : null);
+    // 値が完全にデフォルトと一致する場合は override を持たず default 扱いにする。
+    setReportPromptOverride(
+      "step1",
+      step1 === REPORT_SYSTEM_PROMPT ? null : step1,
+    );
     setStep1Saved("saved");
     setTimeout(() => setStep1Saved("idle"), 1500);
   };
   const saveStep2 = () => {
-    setReportPromptOverride("step2", step2.trim().length > 0 ? step2 : null);
+    setReportPromptOverride(
+      "step2",
+      step2 === GUIDELINE_CHECK_PROMPT ? null : step2,
+    );
     setStep2Saved("saved");
     setTimeout(() => setStep2Saved("idle"), 1500);
+  };
+  const resetStep1 = () => {
+    setReportPromptOverride("step1", null);
+    setStep1(REPORT_SYSTEM_PROMPT);
+    setStep1Saved("idle");
+  };
+  const resetStep2 = () => {
+    setReportPromptOverride("step2", null);
+    setStep2(GUIDELINE_CHECK_PROMPT);
+    setStep2Saved("idle");
   };
   const resetAll = () => {
     if (
       !confirm(
-        "Step 1 / Step 2 のシステムプロンプト上書きを両方クリアし、デフォルトに戻します。よろしいですか？",
+        "Step 1 / Step 2 のシステムプロンプトを両方デフォルトに戻します。よろしいですか？",
       )
     )
       return;
     clearReportPromptOverrides();
-    setStep1("");
-    setStep2("");
+    setStep1(REPORT_SYSTEM_PROMPT);
+    setStep2(GUIDELINE_CHECK_PROMPT);
     setStep1Saved("idle");
     setStep2Saved("idle");
   };
@@ -120,34 +138,36 @@ function PromptEditor({ fontSize }: { fontSize: number }) {
       style={{ fontSize }}
     >
       <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
-        ここで保存した値はブラウザの localStorage に保持され、リクエスト時に
-        サーバの <span className="font-mono">REPORT_SYSTEM_PROMPT</span> /
-        <span className="font-mono"> GUIDELINE_CHECK_PROMPT</span>{" "}
-        を上書きします。空欄のまま保存するとデフォルトに戻ります。
+        編集した内容を「保存」で localStorage に保持し、リクエスト時にサーバの{" "}
+        <span className="font-mono">REPORT_SYSTEM_PROMPT</span> /{" "}
+        <span className="font-mono">GUIDELINE_CHECK_PROMPT</span>{" "}
+        を上書きします。「デフォルトに戻す」で初期プロンプトに戻り、上書きも解除されます。
       </div>
 
       <PromptField
         label="Step 1: 整形プロンプト"
         endpoint="POST /api/report/generate"
-        defaultText={REPORT_SYSTEM_PROMPT}
         value={step1}
+        defaultValue={REPORT_SYSTEM_PROMPT}
         onChange={(v) => {
           setStep1(v);
           setStep1Saved("dirty");
         }}
         onSave={saveStep1}
+        onReset={resetStep1}
         savedState={step1Saved}
       />
       <PromptField
         label="Step 2: ガイドライン照合プロンプト"
         endpoint="POST /api/report/guideline-check"
-        defaultText={GUIDELINE_CHECK_PROMPT}
         value={step2}
+        defaultValue={GUIDELINE_CHECK_PROMPT}
         onChange={(v) => {
           setStep2(v);
           setStep2Saved("dirty");
         }}
         onSave={saveStep2}
+        onReset={resetStep2}
         savedState={step2Saved}
       />
 
@@ -168,22 +188,24 @@ function PromptEditor({ fontSize }: { fontSize: number }) {
 function PromptField({
   label,
   endpoint,
-  defaultText,
   value,
+  defaultValue,
   onChange,
   onSave,
+  onReset,
   savedState,
 }: {
   label: string;
   endpoint: string;
-  defaultText: string;
   value: string;
+  defaultValue: string;
   onChange: (v: string) => void;
   onSave: () => void;
+  onReset: () => void;
   savedState: DraftSaved;
 }) {
-  const [showDefault, setShowDefault] = useState(false);
   const tooLong = value.length > REPORT_PROMPT_MAX_LEN;
+  const isDefault = value === defaultValue;
   return (
     <div className="rounded border border-slate-200 bg-white px-2 py-2">
       <div className="mb-1 flex items-center gap-2">
@@ -196,9 +218,8 @@ function PromptField({
       <textarea
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        placeholder="(空欄のままだとサーバ側のデフォルトプロンプトを使用します)"
         rows={10}
-        className={`w-full resize-y rounded border bg-white px-2 py-1.5 font-mono text-[11px] leading-snug text-slate-700 placeholder:text-slate-400 focus:outline-none ${
+        className={`w-full resize-y rounded border bg-white px-2 py-1.5 font-mono text-[11px] leading-snug text-slate-700 focus:outline-none ${
           tooLong
             ? "border-rose-400 focus:border-rose-500"
             : "border-slate-300 focus:border-teal-400"
@@ -227,17 +248,15 @@ function PromptField({
         )}
         <button
           type="button"
-          onClick={() => setShowDefault((s) => !s)}
-          className="ml-auto text-[10px] text-slate-500 underline hover:text-slate-700"
+          onClick={onReset}
+          disabled={isDefault}
+          className="ml-auto inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          title={isDefault ? "既にデフォルト値です" : "デフォルトプロンプトに戻す"}
         >
-          {showDefault ? "デフォルトを隠す" : "デフォルトを表示"}
+          <RotateCcw className="h-3 w-3" />
+          デフォルトに戻す
         </button>
       </div>
-      {showDefault && (
-        <pre className="mt-1.5 max-h-48 overflow-auto rounded border border-slate-200 bg-slate-50 px-2 py-1 font-mono text-[10px] leading-snug text-slate-600">
-          {defaultText}
-        </pre>
-      )}
     </div>
   );
 }
