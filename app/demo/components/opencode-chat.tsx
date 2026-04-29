@@ -10,6 +10,7 @@ import {
   Brain,
   ChevronDown,
   ChevronRight,
+  Trash2,
 } from "lucide-react";
 import { MarkdownText } from "./markdown-text";
 import type {
@@ -42,6 +43,7 @@ const PRESETS: { label: string; text: string }[] = [
 
 export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
   const [input, setInput] = useState("");
+  const inputRef = useRef<HTMLInputElement | null>(null);
 
   const rag = useChat<OpencodeUIMessage>({
     transport: new DefaultChatTransport({ api: "/api/opencode/rag" }),
@@ -55,6 +57,15 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
     agentic.status === "submitted" || agentic.status === "streaming";
   const busy = ragBusy || agenticBusy;
 
+  // 両方の生成が終わったタイミングで入力欄にフォーカスを戻す。
+  const prevBusy = useRef(false);
+  useEffect(() => {
+    if (prevBusy.current && !busy) {
+      inputRef.current?.focus();
+    }
+    prevBusy.current = busy;
+  }, [busy]);
+
   const submit = (text: string) => {
     if (!text.trim() || busy) return;
     rag.sendMessage({ text });
@@ -62,11 +73,31 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
     setInput("");
   };
 
+  const clear = () => {
+    if (busy) return;
+    rag.setMessages([]);
+    agentic.setMessages([]);
+    setInput("");
+    inputRef.current?.focus();
+  };
+
+  const hasMessages = rag.messages.length > 0 || agentic.messages.length > 0;
+
   return (
     <div className="flex h-full w-full flex-col bg-white text-slate-700">
-      {/* ワークスペース表示 */}
-      <div className="flex shrink-0 items-center justify-end gap-2 border-b border-blue-200 bg-blue-50 px-3 py-1.5">
-        <span className="font-mono text-[10px] text-slate-400">
+      {/* ワークスペース表示 + クリアボタン */}
+      <div className="flex shrink-0 items-center gap-2 border-b border-blue-200 bg-blue-50 px-3 py-1.5">
+        <button
+          type="button"
+          onClick={clear}
+          disabled={busy || !hasMessages}
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+          title="両カラムの会話履歴とコンテキストをクリア"
+        >
+          <Trash2 className="h-3 w-3" />
+          クリア
+        </button>
+        <span className="ml-auto font-mono text-[10px] text-slate-400">
           ws: {workspaceId}
         </span>
       </div>
@@ -121,10 +152,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           className="flex items-center gap-1.5"
         >
           <input
+            ref={inputRef}
             value={input}
             onChange={(e) => setInput(e.target.value)}
             disabled={busy}
             placeholder="同じ質問を RAG / Agentic 両方に投げます..."
+            autoFocus
             className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
           />
           <button
