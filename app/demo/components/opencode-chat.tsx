@@ -61,10 +61,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
   };
 
   return (
-    <div
-      className="flex h-full w-full flex-col bg-[#0b0b0f] text-white/90"
-      style={{ fontSize }}
-    >
+    <div className="flex h-full w-full flex-col bg-[#0b0b0f] text-white/90">
       {/* モードセレクタ + ワークスペース表示 */}
       <div className="flex shrink-0 items-center gap-2 border-b border-white/10 bg-[#100c1f] px-3 py-2">
         <ModeButton
@@ -101,25 +98,26 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
         ))}
       </div>
 
-      {/* メッセージ履歴 */}
+      {/* メッセージ履歴 (タイトルバーの -/+ で fontSize を変えるとここがスケールする) */}
       <div
         ref={scrollRef}
         className="flex-1 space-y-3 overflow-y-auto px-3 py-3"
+        style={{ fontSize }}
       >
         {messages.length === 0 && !error && (
-          <p className="text-[11px] italic text-white/40">
+          <p className="italic text-white/40">
             {mode === "rag"
               ? "RAG: 1 回キーワード検索 → LLM がスニペットだけを根拠に回答します。多段ホップや語彙ギャップが必要な質問では弱い場面が見えます。"
               : "Agentic: LLM が searchDocs / readDoc を自律的に呼び、必要に応じて多段でドキュメントを読みに行きます。"}
           </p>
         )}
         {error && (
-          <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-[11px] text-red-200">
+          <div className="rounded border border-red-500/40 bg-red-500/10 p-2 text-red-200">
             <div className="mb-1 font-medium">エラー</div>
-            <div className="whitespace-pre-wrap font-mono text-[10px]">
+            <div className="whitespace-pre-wrap font-mono" style={{ fontSize: "0.85em" }}>
               {error.message}
             </div>
-            <div className="mt-1 text-[10px] text-red-300/70">
+            <div className="mt-1 text-red-300/70" style={{ fontSize: "0.85em" }}>
               llama.cpp が起動しているか、LLAMA_BASE_URL の値を確認してください。
             </div>
           </div>
@@ -197,7 +195,7 @@ function MessageView({
 }) {
   if (message.role === "user") {
     return (
-      <div className="border-l-2 border-white/30 pl-2 text-[11px] text-white/60">
+      <div className="border-l-2 border-white/30 pl-2 text-white/60">
         <span className="font-medium text-white/80">Q: </span>
         {message.parts
           .filter((p) => p.type === "text")
@@ -219,7 +217,7 @@ function MessageView({
           return (
             <div
               key={i}
-              className="whitespace-pre-wrap leading-relaxed text-[12px] text-white/90"
+              className="whitespace-pre-wrap leading-relaxed text-white/90"
             >
               {part.text}
             </div>
@@ -229,7 +227,8 @@ function MessageView({
           return (
             <div
               key={i}
-              className="mt-1 text-[9px] uppercase tracking-wider text-white/30"
+              className="mt-1 uppercase tracking-wider text-white/30"
+              style={{ fontSize: "0.75em" }}
             >
               ── next step ──
             </div>
@@ -251,7 +250,7 @@ function MessageView({
 
 function RetrievedList({ hits }: { hits: RetrievedHit[] }) {
   return (
-    <div className="rounded border border-emerald-400/30 bg-emerald-500/5 p-2 text-[11px]">
+    <div className="rounded border border-emerald-400/30 bg-emerald-500/5 p-2">
       <div className="mb-1 font-medium text-emerald-300">
         取得したチャンク ({hits.length})
       </div>
@@ -276,7 +275,7 @@ function RetrievedList({ hits }: { hits: RetrievedHit[] }) {
 
 function SearchDocsView({ part }: { part: SearchDocsPart }) {
   return (
-    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2 text-[11px]">
+    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2">
       <div className="font-medium text-violet-200">
         🔎 searchDocs
         {part.input?.query && (
@@ -305,7 +304,7 @@ function SearchDocsView({ part }: { part: SearchDocsPart }) {
 
 function ReadDocView({ part }: { part: ReadDocPart }) {
   return (
-    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2 text-[11px]">
+    <div className="rounded border border-violet-400/30 bg-violet-500/10 p-2">
       <div className="font-medium text-violet-200">
         📄 readDoc
         {part.input?.id && (

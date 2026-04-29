@@ -132,7 +132,10 @@ function FloatingWorkspaceInner({
           <div className="border-b border-sky-200 bg-sky-50 px-3 py-1 font-mono text-[11px] text-sky-800 break-all">{notice}</div>
         )}
 
-        <div className="relative flex-1 px-3 py-2 font-mono text-[11px] text-slate-500">
+        <div
+          className="relative flex-1 px-3 py-2 font-mono text-slate-500"
+          style={{ fontSize }}
+        >
           ホワイトボードに自由に描けます。OpenCode パネルは workspace を選択した後に起動できます。
           <div
             className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
