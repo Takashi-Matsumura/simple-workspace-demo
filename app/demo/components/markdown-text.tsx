@@ -60,12 +60,17 @@ export function MarkdownText({ text, highlightStrong = false }: Props) {
           ),
           strong: ({ children }) =>
             highlightStrong ? (
-              <strong
-                className="rounded border-l-2 border-amber-400 bg-amber-100 px-1 font-bold text-amber-900"
+              <mark
+                className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900"
+                style={{
+                  // 蛍光ペン風 (薄い黄色のグラデ)。背景色だけだとデジタルっぽいので
+                  // box-shadow で微妙にぼかす。
+                  boxShadow: "0 0 0 1px rgba(202, 138, 4, 0.25)",
+                }}
                 title="人間の確認が必要な箇所 (Step 2 で抽出)"
               >
                 {children}
-              </strong>
+              </mark>
             ) : (
               <strong className="font-semibold text-slate-900">
                 {children}

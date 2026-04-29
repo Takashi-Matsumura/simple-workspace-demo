@@ -25,6 +25,38 @@ const RequestBody = z.object({
     }),
 });
 
+type Finding = {
+  sentenceText: string;
+  label: string;
+  reason: string;
+  citations: string[];
+};
+
+const MAX_FINDINGS = 6;
+
+// 原本本文と findings から最終 Markdown を決定論的に組み立てる。
+// - 各 finding の sentenceText を 1 回だけ **...** で囲む (原文に存在しない場合はスキップ)
+// - 末尾に「## ⚠️ 人間の確認が必要な事項」セクションを 1 つ追加
+function assembleReport(originalBody: string, findings: Finding[]): string {
+  let body = originalBody.trim();
+  for (const f of findings) {
+    const idx = body.indexOf(f.sentenceText);
+    if (idx === -1) continue;
+    const wrapped = `**${f.sentenceText}**`;
+    body = body.slice(0, idx) + wrapped + body.slice(idx + f.sentenceText.length);
+  }
+  const summary =
+    findings.length === 0
+      ? "- 特記すべき確認事項はありません。"
+      : findings
+          .map((f) => {
+            const cites = f.citations.map((c) => `[doc=${c}]`).join(" ");
+            return `- **${f.label}**: ${f.reason} ${cites}`.trimEnd();
+          })
+          .join("\n");
+  return `${body}\n\n## ⚠️ 人間の確認が必要な事項\n\n${summary}\n`;
+}
+
 export async function POST(req: Request) {
   const user = await getUser(req);
   if (!user) return json({ error: "unauthorized" }, 401);
@@ -39,6 +71,10 @@ export async function POST(req: Request) {
 
   const file = await readWorkspaceFile(workspaceId, path);
   if (!file.found) return json({ error: "report not found" }, 404);
+
+  const originalBody = file.content;
+  const findings: Finding[] = [];
+  const seenSentences = new Set<string>();
 
   const tools = {
     searchGuidelines: tool({
@@ -79,11 +115,76 @@ export async function POST(req: Request) {
         };
       },
     }),
+    recordFinding: tool({
+      description:
+        "確認が必要な箇所を 1 件記録する。元レポート本文に文字通り存在する一文 (句点まで) を sentenceText に渡す。最大 6 件。同じ sentenceText を 2 度記録しない。",
+      inputSchema: z.object({
+        sentenceText: z
+          .string()
+          .min(1)
+          .max(400)
+          .describe("元レポート本文中の該当文を文字通り (句点まで)"),
+        label: z.string().min(1).max(60).describe("事項の短いラベル"),
+        reason: z
+          .string()
+          .min(1)
+          .max(300)
+          .describe("なぜ確認が必要か (1〜2 文)"),
+        citations: z
+          .array(
+            z
+              .string()
+              .regex(/^guideline-[a-z]+$/, "guideline-xxx 形式")
+              .min(1),
+          )
+          .min(1)
+          .max(3)
+          .describe("根拠ガイドライン id (1〜3 件)"),
+      }),
+      execute: async ({ sentenceText, label, reason, citations }) => {
+        if (findings.length >= MAX_FINDINGS) {
+          return { ok: false as const, error: "max findings reached (6)" };
+        }
+        const trimmed = sentenceText.trim();
+        if (seenSentences.has(trimmed)) {
+          return { ok: false as const, error: "duplicate sentence" };
+        }
+        if (!originalBody.includes(trimmed)) {
+          return {
+            ok: false as const,
+            error:
+              "sentenceText must be a verbatim substring of the original report body",
+          };
+        }
+        const valid = citations.filter((c) => {
+          const doc = getDocById(c);
+          return doc && doc.category === "guideline";
+        });
+        if (valid.length === 0) {
+          return {
+            ok: false as const,
+            error: "citations must include at least one valid guideline id",
+          };
+        }
+        seenSentences.add(trimmed);
+        findings.push({
+          sentenceText: trimmed,
+          label: label.trim(),
+          reason: reason.trim(),
+          citations: valid,
+        });
+        return {
+          ok: true as const,
+          recorded: findings.length,
+          remaining: MAX_FINDINGS - findings.length,
+        };
+      },
+    }),
   };
 
-  const userPrompt = `# 元の整形済みレポート (このまま受け取って、該当文の太字化と末尾サマリ追加だけを行う)
+  const userPrompt = `# 元の整形済みレポート (この本文を読んで、確認が必要な箇所を recordFinding で記録すること)
 
-${file.content.trim()}`;
+${originalBody.trim()}`;
 
   const result = streamText({
     model: localModel,
@@ -91,9 +192,10 @@ ${file.content.trim()}`;
     prompt: userPrompt,
     tools,
     stopWhen: stepCountIs(8),
-    onFinish: async ({ text }) => {
+    onFinish: async () => {
       try {
-        await writeWorkspaceFile(workspaceId, path, text);
+        const finalContent = assembleReport(originalBody, findings);
+        await writeWorkspaceFile(workspaceId, path, finalContent);
       } catch (e) {
         console.error(
           "[report/guideline-check] writeWorkspaceFile failed",

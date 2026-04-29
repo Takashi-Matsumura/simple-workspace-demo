@@ -27,6 +27,14 @@ type GuidelineToolEvent =
       title?: string;
       found?: boolean;
       state: "running" | "done" | "error";
+    }
+  | {
+      kind: "record";
+      toolCallId: string;
+      label?: string;
+      sentenceText?: string;
+      ok?: boolean;
+      state: "running" | "done" | "error";
     };
 
 const PRESETS: {
@@ -158,10 +166,15 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   };
 
   // Step 2: ガイドライン照合。Step 1 で保存された path を上書き保存する。
-  // SSE chunk を直接読み、text-delta を previewText に反映 + tool-call 系を toolEvents に積む。
+  // SSE chunk を直接読んで tool-call 系を toolEvents に積む。
+  // LLM の text-delta は途中のスクラッチで、最終ファイルは onFinish の
+  // assembleReport が原本本文 + recordFinding から決定論的に組み立てるので、
+  // 最終的に保存ファイルを再 fetch してプレビューを置き換える。
   const runGuidelineCheck = async (path: string) => {
     setStatus("checking");
-    setPreviewText("");
+    // Step 1 のプレビューはそのまま残す: ハイライト前の元レポートとして見える方が
+    // 体験が分かりやすい。最終ファイルを再 fetch する時点で highlight 入りに
+    // 上書きされる。
     setToolEvents([]);
     setStepIndex(0);
 
@@ -176,13 +189,10 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         throw new Error(errText || `HTTP ${res.status}`);
       }
 
-      let acc = "";
       for await (const chunk of parseUIMessageStream(res.body)) {
         const t = chunk.type as string;
-        if (t === "text-delta") {
-          acc += String(chunk.delta ?? "");
-          setPreviewText(acc);
-        } else if (t === "start-step") {
+        // text-delta (LLM スクラッチ) は最終ファイルに使わないので無視する。
+        if (t === "start-step") {
           setStepIndex((n) => n + 1);
         } else if (t === "tool-input-start") {
           const toolCallId = String(chunk.toolCallId);
@@ -191,24 +201,38 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             ...prev,
             toolName === "searchGuidelines"
               ? { kind: "search", toolCallId, state: "running" }
-              : { kind: "read", toolCallId, state: "running" },
+              : toolName === "readGuideline"
+                ? { kind: "read", toolCallId, state: "running" }
+                : { kind: "record", toolCallId, state: "running" },
           ]);
         } else if (t === "tool-input-available") {
           const toolCallId = String(chunk.toolCallId);
-          const input = chunk.input as { query?: string; id?: string } | undefined;
+          const input = chunk.input as
+            | { query?: string; id?: string; label?: string; sentenceText?: string }
+            | undefined;
           setToolEvents((prev) =>
-            prev.map((e) =>
-              e.toolCallId === toolCallId
-                ? e.kind === "search"
-                  ? { ...e, query: input?.query }
-                  : { ...e, id: input?.id }
-                : e,
-            ),
+            prev.map((e) => {
+              if (e.toolCallId !== toolCallId) return e;
+              if (e.kind === "search") return { ...e, query: input?.query };
+              if (e.kind === "read") return { ...e, id: input?.id };
+              return {
+                ...e,
+                label: input?.label,
+                sentenceText: input?.sentenceText,
+              };
+            }),
           );
         } else if (t === "tool-output-available") {
           const toolCallId = String(chunk.toolCallId);
           const output = chunk.output as
-            | { query?: string; hits?: GuidelineHit[]; id?: string; found?: boolean; title?: string }
+            | {
+                query?: string;
+                hits?: GuidelineHit[];
+                id?: string;
+                found?: boolean;
+                title?: string;
+                ok?: boolean;
+              }
             | undefined;
           setToolEvents((prev) =>
             prev.map((e) => {
@@ -221,12 +245,19 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                   state: "done",
                 };
               }
+              if (e.kind === "read") {
+                return {
+                  ...e,
+                  id: output?.id ?? e.id,
+                  found: output?.found,
+                  title: output?.title,
+                  state: "done",
+                };
+              }
               return {
                 ...e,
-                id: output?.id ?? e.id,
-                found: output?.found,
-                title: output?.title,
-                state: "done",
+                ok: output?.ok ?? false,
+                state: output?.ok ? "done" : "error",
               };
             }),
           );
@@ -242,8 +273,25 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         }
       }
 
+      // 最終ファイルはサーバー側で原本本文 + recordFinding 結果から決定論的に
+      // 組み立てられている。LLM の text-delta は途中のスクラッチなので、
+      // ここで再 fetch して画面プレビューを最終 (ハイライト入り) で置き換える。
+      try {
+        const fileRes = await fetch(
+          `/api/opencode/files?workspaceId=${encodeURIComponent(workspaceId)}&path=${encodeURIComponent(path)}`,
+        );
+        const j = (await fileRes.json().catch(() => ({}))) as {
+          found?: boolean;
+          content?: string;
+        };
+        if (j.found && typeof j.content === "string") {
+          setPreviewText(j.content);
+        }
+      } catch {
+        // 取得失敗時はそのまま (LLM のスクラッチ出力が previewText に残っている)
+      }
       setStatus("done");
-      // Step 2 で同 path を上書き保存しているので、tree+preview をリフレッシュ。
+      // Step 2 で同 path を上書き保存しているので、workspace tree もリフレッシュ。
       window.dispatchEvent(
         new CustomEvent(OPEN_PATH_EVENT, { detail: { path } }),
       );
@@ -325,9 +373,8 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const busy = status === "streaming" || status === "checking";
   const canSubmit = !busy && freeText.trim().length > 0;
   const hasResult = previewText.length > 0 || savedPath !== null;
-  // Step 2 中は LLM が tool 呼び出しと本文再生成を行ったり来たりする。
-  // step 数だけだと進捗が動かないように見えるので、現在進行中の活動を
-  // フェーズで表示する: 検索中 / 読込中 / 再生成中 / 思考中。
+  // Step 2 中の進捗を、現在進行中のツール呼び出しから推定したフェーズで表示する。
+  // step カウンタだけだと見た目が動かないことがあるので、tool 別の累計件数も併記。
   const runningTool = toolEvents.find((e) => e.state === "running");
   const completedSearches = toolEvents.filter(
     (e) => e.kind === "search" && e.state === "done",
@@ -335,19 +382,22 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const completedReads = toolEvents.filter(
     (e) => e.kind === "read" && e.state === "done",
   ).length;
+  const recordedFindings = toolEvents.filter(
+    (e) => e.kind === "record" && e.state === "done",
+  ).length;
   const phase: { icon: string; label: string } = (() => {
     if (status !== "checking") return { icon: "", label: "" };
     if (runningTool?.kind === "search")
       return { icon: "🔎", label: "ガイドライン検索中" };
     if (runningTool?.kind === "read")
       return { icon: "📄", label: "ガイドライン読込中" };
-    if (previewText.length > 0)
-      return { icon: "✏️", label: "レポート再生成中" };
-    return { icon: "🧠", label: "思考中" };
+    if (runningTool?.kind === "record")
+      return { icon: "🖍️", label: "ハイライト記録中" };
+    return { icon: "🧠", label: "考察中" };
   })();
   const phaseStats =
     status === "checking"
-      ? `step ${stepIndex} · 🔎${completedSearches} · 📄${completedReads} · ${previewText.length}文字`
+      ? `step ${stepIndex} · 🔎${completedSearches} · 📄${completedReads} · 🖍️${recordedFindings}`
       : "";
 
   return (
@@ -575,17 +625,36 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
       </div>
     );
   }
+  if (ev.kind === "read") {
+    return (
+      <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
+        <span>📄</span>
+        <span className="font-mono text-amber-700">readGuideline</span>
+        {ev.id && <span className="font-mono text-slate-600">{ev.id}</span>}
+        {ev.found === true && ev.title && (
+          <span className="truncate text-slate-500">→ {ev.title}</span>
+        )}
+        {ev.found === false && (
+          <span className="italic text-rose-600">→ 見つかりませんでした</span>
+        )}
+        {stateBadge}
+      </div>
+    );
+  }
   return (
-    <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
-      <span>📄</span>
-      <span className="font-mono text-amber-700">readGuideline</span>
-      {ev.id && <span className="font-mono text-slate-600">{ev.id}</span>}
-      {ev.found === true && ev.title && (
-        <span className="truncate text-slate-500">→ {ev.title}</span>
-      )}
-      {ev.found === false && (
-        <span className="italic text-rose-600">→ 見つかりませんでした</span>
-      )}
+    <div className="flex items-start gap-1.5 text-[11px] text-slate-700">
+      <span>🖍️</span>
+      <span className="font-mono text-amber-700">recordFinding</span>
+      <div className="min-w-0 flex-1">
+        {ev.label && (
+          <span className="font-semibold text-amber-900">{ev.label}</span>
+        )}
+        {ev.sentenceText && (
+          <div className="truncate text-slate-500" title={ev.sentenceText}>
+            「{ev.sentenceText}」
+          </div>
+        )}
+      </div>
       {stateBadge}
     </div>
   );
