@@ -88,7 +88,10 @@ export function FloatingWorkspacePreview({ fontSize, selectedPath }: Props) {
         ) : content === null ? (
           <p className="italic text-slate-400">読み込み中...</p>
         ) : isMarkdown ? (
-          <MarkdownText text={content} />
+          <MarkdownText
+            text={content}
+            highlightStrong={selectedPath?.startsWith("reports/") ?? false}
+          />
         ) : (
           <pre className="whitespace-pre-wrap break-all font-mono text-slate-700">
             {content}

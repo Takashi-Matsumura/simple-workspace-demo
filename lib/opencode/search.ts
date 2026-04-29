@@ -21,11 +21,16 @@ function tokenize(text: string): string[] {
     .filter((t) => t.length > 0 && !STOPWORDS.has(t));
 }
 
-export function searchCorpus(query: string, topK = 3): SearchHit[] {
+export function searchCorpus(
+  query: string,
+  topK = 3,
+  category?: Doc["category"],
+): SearchHit[] {
   const terms = tokenize(query);
   if (terms.length === 0) return [];
 
-  const scored: SearchHit[] = CORPUS.map((doc) => {
+  const pool = category ? CORPUS.filter((d) => d.category === category) : CORPUS;
+  const scored: SearchHit[] = pool.map((doc) => {
     const haystack = (doc.title + "\n" + doc.content).toLowerCase();
     let score = 0;
     for (const term of terms) {

@@ -140,7 +140,9 @@ function FloatingWorkspaceInner({
           ? "faq"
           : id.startsWith("incident-")
             ? "incident"
-            : null;
+            : id.startsWith("guideline-")
+              ? "guideline"
+              : null;
       if (!category) return;
       setSelectedPath(`corpus/${category}/${id}.md`);
       setFlipped(false);

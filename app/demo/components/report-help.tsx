@@ -1,6 +1,6 @@
 "use client";
 
-import { ClipboardList, FileCheck2, FolderTree } from "lucide-react";
+import { ClipboardList, FileCheck2, FolderTree, ShieldAlert } from "lucide-react";
 
 type Props = {
   fontSize: number;
@@ -28,9 +28,80 @@ export function ReportHelp({ fontSize }: Props) {
       >
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
           <li>訪問日 / ヘルパー名 / ゲスト名 + 自由記述メモを入力</li>
-          <li>「整形してファイル保存」で AI 出力をストリーム表示</li>
+          <li>
+            「整形してファイル保存」で <strong>Step 1: AI 整形</strong>{" "}
+            のストリームが流れます
+          </li>
+          <li>
+            続けて <strong>Step 2: ガイドライン照合</strong> が自動で走り、
+            人間 (管理者・ケアマネ・看護師) の確認が必要な箇所を
+            太字 + サマリで追記します
+          </li>
           <li>
             完了後、Workspace ツリーが自動更新され該当ファイルが選択されます
+          </li>
+        </ul>
+      </Section>
+
+      <Section
+        color="#b45309"
+        icon={<ShieldAlert className="h-3.5 w-3.5" />}
+        label="Step 2: ガイドライン照合 (Agentic)"
+        endpoint="/api/report/guideline-check"
+      >
+        <p className="mb-1 text-slate-700">
+          整形済みレポートを 6 件の社内介護ガイドラインに照らして読み返し、
+          人間の確認が必要な箇所を最大 6 件抽出します。LLM が
+          <span className="font-mono"> searchGuidelines </span>/{" "}
+          <span className="font-mono">readGuideline</span> ツールを最大 8
+          step まで自律的に呼ぶ <strong>Agentic 検索</strong>{" "}
+          のデモです (RAG ではありません)。
+        </p>
+        <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+          <li>
+            元レポートの該当文を <span className="font-mono">**…**</span>{" "}
+            で太字化 (見出し・順序・文言は変更しない)
+          </li>
+          <li>
+            末尾に{" "}
+            <span className="font-mono">## ⚠️ 人間の確認が必要な事項</span>{" "}
+            セクションを追加し、各事項に{" "}
+            <span className="font-mono">[doc=guideline-xxx]</span> で根拠を引用
+          </li>
+          <li>
+            引用は readGuideline で本文を読んだガイドラインのみ。引用ボタンを
+            クリックすると Workspace ツリーで該当ガイドラインが開きます
+          </li>
+          <li>
+            Step 2 は Step 1 で保存した同 path に上書き保存します。失敗しても
+            Step 1 のファイルは残ります
+          </li>
+        </ul>
+        <p className="mt-1 text-slate-700">参照する 6 件のガイドライン:</p>
+        <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+          <li>
+            <span className="font-mono text-teal-700">guideline-vital</span> —
+            バイタル管理 (体温・血圧の閾値と家族連絡基準)
+          </li>
+          <li>
+            <span className="font-mono text-teal-700">guideline-abuse</span> —
+            虐待防止と外傷観察 (経緯不明のあざの取り扱い)
+          </li>
+          <li>
+            <span className="font-mono text-teal-700">guideline-infection</span>{" "}
+            — 感染症対策 (微熱継続・食欲低下の初期兆候)
+          </li>
+          <li>
+            <span className="font-mono text-teal-700">guideline-falls</span> —
+            転倒予防 (ふらつき時の付き添いと記録)
+          </li>
+          <li>
+            <span className="font-mono text-teal-700">guideline-handover</span>{" "}
+            — 申し送りと家族連絡 (普段との差分の記録)
+          </li>
+          <li>
+            <span className="font-mono text-teal-700">guideline-meds</span> —
+            服薬管理 (補充禁止・新薬の継続観察)
           </li>
         </ul>
       </Section>

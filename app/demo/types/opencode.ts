@@ -3,7 +3,7 @@ import type { UIMessage } from "ai";
 export type RetrievedHit = {
   id: string;
   title: string;
-  category: "spec" | "faq" | "incident";
+  category: "spec" | "faq" | "incident" | "guideline";
   snippet: string;
   score: number;
 };
@@ -12,7 +12,8 @@ export type OpencodeMode = "rag" | "agentic";
 
 export type OpencodeMetadata =
   | { mode: "rag"; retrieved: RetrievedHit[] }
-  | { mode: "agentic" };
+  | { mode: "agentic" }
+  | { mode: "guideline-check" };
 
 export type OpencodeUIMessage = UIMessage<OpencodeMetadata>;
 
@@ -82,4 +83,28 @@ export type DeleteFilePart = {
   output?:
     | { ok: true; path: string; deleted: boolean }
     | { ok: false; error: string };
+};
+
+// 訪問レポートの Step 2 (ガイドライン照合) で使う Agentic ツールの part 型。
+export type GuidelineHit = {
+  id: string;
+  title: string;
+  snippet: string;
+  score: number;
+};
+
+export type SearchGuidelinesPart = {
+  type: "tool-searchGuidelines";
+  state: string;
+  input?: { query: string };
+  output?: { query: string; hits: GuidelineHit[] };
+};
+
+export type ReadGuidelinePart = {
+  type: "tool-readGuideline";
+  state: string;
+  input?: { id: string };
+  output?:
+    | { id: string; found: false }
+    | { id: string; found: true; title: string; content: string };
 };

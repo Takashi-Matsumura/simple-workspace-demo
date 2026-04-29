@@ -1,10 +1,14 @@
 "use client";
 
+import { Children, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
 type Props = {
   text: string;
+  // ガイドライン照合後の本文ハイライト用。`**…**` を蛍光ペン風の
+  // 黄色マーカー + 太字に切り替えて、確認すべき箇所を視覚的に強調する。
+  highlightStrong?: boolean;
 };
 
 // LLM が回答に埋め込む `[doc=xxx]` を、特殊な hash リンク `#doc/xxx` を持つ
@@ -27,7 +31,7 @@ export type OpenPathEventDetail = { path: string };
 
 // LLM 回答用の軽量 Markdown レンダラ。
 // @tailwindcss/typography に依存せず、必要なタグだけ手書きで色付けする。
-export function MarkdownText({ text }: Props) {
+export function MarkdownText({ text, highlightStrong = false }: Props) {
   return (
     <div className="space-y-2 leading-relaxed text-slate-800">
       <ReactMarkdown
@@ -55,9 +59,14 @@ export function MarkdownText({ text }: Props) {
           ol: ({ children }) => (
             <ol className="list-decimal space-y-0.5 pl-5">{children}</ol>
           ),
-          strong: ({ children }) => (
-            <strong className="font-semibold text-slate-900">{children}</strong>
-          ),
+          strong: ({ children }) =>
+            highlightStrong ? (
+              <HighlightMark>{children}</HighlightMark>
+            ) : (
+              <strong className="font-semibold text-slate-900">
+                {children}
+              </strong>
+            ),
           em: ({ children }) => <em className="italic">{children}</em>,
           a: ({ children, href }) => {
             // `#doc/xxx` 形式のリンクは引用ピン。クリックで workspace パネルに
@@ -132,5 +141,34 @@ export function MarkdownText({ text }: Props) {
         {preprocessDocRefs(text)}
       </ReactMarkdown>
     </div>
+  );
+}
+
+// 太字の先頭が `[N] ` の場合は番号バッジを切り出して描画する。
+// これで本文中のハイライトとサマリ事項を同じ番号で視覚的につなげられる。
+function HighlightMark({ children }: { children?: ReactNode }) {
+  const arr = Children.toArray(children);
+  let badge: string | null = null;
+  let rest: ReactNode = children;
+  if (arr.length > 0 && typeof arr[0] === "string") {
+    const m = arr[0].match(/^\[(\d+)\]\s+([\s\S]*)$/);
+    if (m) {
+      badge = m[1];
+      rest = [m[2], ...arr.slice(1)] as ReactNode[];
+    }
+  }
+  return (
+    <mark
+      className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900"
+      style={{ boxShadow: "0 0 0 1px rgba(202, 138, 4, 0.25)" }}
+      title="人間の確認が必要な箇所 (Step 2 で抽出)"
+    >
+      {badge && (
+        <span className="mr-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-600 px-1 align-[1px] text-[10px] font-bold leading-none text-white">
+          {badge}
+        </span>
+      )}
+      {rest}
+    </mark>
   );
 }
