@@ -131,7 +131,7 @@ export default function FloatingTerminal({
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
       </div>
-      <OpenCodeLogo className={`ml-1 ${logoColor}`} />
+      <OpenCodeLogo className={`ml-1 ${logoColor}`} accentClassName={logoColor} />
       <span className="font-mono text-[10px] text-slate-400">— {sublabel}</span>
       <div className="ml-auto flex items-center gap-1">
         <button
