@@ -1,12 +1,12 @@
 "use client";
 
-import { FileSearch, Sparkles, Terminal } from "lucide-react";
+import { FileSearch, Sparkles } from "lucide-react";
 
 type Props = {
   fontSize: number;
 };
 
-// OpenCode パネル裏面のヘルプペイン。各モードの違いと使い方をまとめる。
+// OpenCode パネル裏面のヘルプペイン。RAG と Agentic の違いと使い方をまとめる。
 export function OpenCodeHelp({ fontSize }: Props) {
   return (
     <div
@@ -14,8 +14,8 @@ export function OpenCodeHelp({ fontSize }: Props) {
       style={{ fontSize }}
     >
       <p className="mb-3 text-slate-500">
-        OpenCode パネルは社内文書の RAG / Agentic / Coding を比較するデモです。
-        モードを切り替えて、同じ質問でも回答プロセスがどう変わるか観察できます。
+        OpenCode パネルは社内文書の RAG と Agentic を並べて比較するデモです。
+        同じ質問を一度に投げると、左右で回答プロセスがどう変わるかを観察できます。
       </p>
 
       <ModeSection
@@ -38,25 +38,16 @@ export function OpenCodeHelp({ fontSize }: Props) {
         weak={["1 回検索で十分な質問は冗長になる"]}
       />
 
-      <ModeSection
-        color="#fb923c"
-        icon={<Terminal className="h-3.5 w-3.5" />}
-        label="Coding"
-        endpoint="POST /api/opencode/coding (max 10 steps)"
-        desc="searchDocs / readDoc に加えて writeFile / readFile / listFiles / deleteFile を持つ Agent。Workspace ごとの仮想 FS にファイルを保存できる。"
-        strong={["「調べてまとめて Markdown で保存」など 一連のタスクを丸ごと依頼"]}
-        weak={["ファイル本文最大 64KB / Workspace あたり最大 100 ファイル"]}
-      />
-
       <div className="mt-4 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
         <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
           tips
         </div>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+          <li>送信ボタンを押すと、左右の RAG / Agentic に同じ質問が同時に投げられます。</li>
           <li>パネル右下の ▢ をドラッグするとサイズ変更できます。</li>
           <li>ヘッダー右の -/+ で会話履歴のフォントサイズを変えられます。</li>
           <li>左上のトラフィックライト 🔴🟡🟢 は閉じる / 最小化 / 80% フィット表示。</li>
-          <li>Coding モードでは右サイドに仮想 FS のファイル一覧が出ます。行をクリックすると本文プレビュー。</li>
+          <li>回答内の <span className="font-mono">[doc=...]</span> をクリックすると Workspace パネルでその文書が開きます。</li>
         </ul>
       </div>
     </div>

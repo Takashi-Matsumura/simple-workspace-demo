@@ -8,12 +8,11 @@ export type RetrievedHit = {
   score: number;
 };
 
-export type OpencodeMode = "rag" | "agentic" | "coding";
+export type OpencodeMode = "rag" | "agentic";
 
 export type OpencodeMetadata =
   | { mode: "rag"; retrieved: RetrievedHit[] }
-  | { mode: "agentic" }
-  | { mode: "coding" };
+  | { mode: "agentic" };
 
 export type OpencodeUIMessage = UIMessage<OpencodeMetadata>;
 
