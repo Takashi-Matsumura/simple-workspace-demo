@@ -2,10 +2,13 @@
 
 import { useEffect, useRef, useState } from "react";
 import {
+  BookOpen,
   ChevronDown,
   ChevronRight,
   ClipboardList,
   FileCheck2,
+  Highlighter,
+  Search,
   Send,
   ShieldAlert,
   Trash2,
@@ -136,7 +139,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const [warningMsg, setWarningMsg] = useState<string | null>(null);
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [toolEvents, setToolEvents] = useState<GuidelineToolEvent[]>([]);
-  const [stepIndex, setStepIndex] = useState(0);
   // Step 2 中は履歴を展開、完了後は本文表示エリアを優先して自動で畳む。
   // ユーザーが一度手動で開閉したらその状態が優先される。
   // null = 自動 (status 駆動), boolean = 手動上書き。
@@ -180,7 +182,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setWarningMsg(null);
     setSavedPath(null);
     setToolEvents([]);
-    setStepIndex(0);
     setToolStripOverride(null);
   };
 
@@ -195,7 +196,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     // 体験が分かりやすい。最終ファイルを再 fetch する時点で highlight 入りに
     // 上書きされる。
     setToolEvents([]);
-    setStepIndex(0);
 
     try {
       const res = await fetch("/api/report/guideline-check", {
@@ -212,9 +212,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       for await (const chunk of parseUIMessageStream(res.body)) {
         const t = chunk.type as string;
         // text-delta (LLM スクラッチ) は最終ファイルに使わないので無視する。
-        if (t === "start-step") {
-          setStepIndex((n) => n + 1);
-        } else if (t === "finish" || t === "message-metadata") {
+        if (t === "finish" || t === "message-metadata") {
           // サーバが messageMetadata に最終ファイル内容を載せて送ってくる。
           const meta = chunk.messageMetadata as
             | { finalContent?: string }
@@ -330,7 +328,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setWarningMsg(null);
     setSavedPath(null);
     setToolEvents([]);
-    setStepIndex(0);
     setToolStripOverride(null);
 
     try {
@@ -390,9 +387,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const busy = status === "streaming" || status === "checking";
   const canSubmit = !busy && freeText.trim().length > 0;
   const hasResult = previewText.length > 0 || savedPath !== null;
-  // Step 2 中の進捗を、現在進行中のツール呼び出しから推定したフェーズで表示する。
-  // step カウンタだけだと見た目が動かないことがあるので、tool 別の累計件数も併記。
-  const runningTool = toolEvents.find((e) => e.state === "running");
+  // Step 2 のツール別累計件数。AGENTIC ストリップのヘッダで進捗カウンタとして使う。
   const completedSearches = toolEvents.filter(
     (e) => e.kind === "search" && e.state === "done",
   ).length;
@@ -402,20 +397,6 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const recordedFindings = toolEvents.filter(
     (e) => e.kind === "record" && e.state === "done",
   ).length;
-  const phase: { icon: string; label: string } = (() => {
-    if (status !== "checking") return { icon: "", label: "" };
-    if (runningTool?.kind === "search")
-      return { icon: "🔎", label: "ガイドライン検索中" };
-    if (runningTool?.kind === "read")
-      return { icon: "📄", label: "ガイドライン読込中" };
-    if (runningTool?.kind === "record")
-      return { icon: "🖍️", label: "ハイライト記録中" };
-    return { icon: "🧠", label: "考察中" };
-  })();
-  const phaseStats =
-    status === "checking"
-      ? `step ${stepIndex} · 🔎${completedSearches} · 📄${completedReads} · 🖍️${recordedFindings}`
-      : "";
 
   return (
     <div
@@ -538,33 +519,13 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
 
         {/* 右: 整形プレビュー */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div
-            className={`flex shrink-0 items-center gap-1.5 border-b px-3 py-1 text-[11px] font-semibold ${
-              status === "checking"
-                ? "border-amber-200 bg-amber-50/60 text-amber-800"
-                : "border-teal-200 bg-teal-50/60 text-teal-700"
-            }`}
-          >
+          <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
-            {status === "checking" ? (
-              <>
-                <span>{phase.icon}</span>
-                <span>ガイドライン照合中 — {phase.label}</span>
-                <span className="ml-2 font-mono text-[10px] font-normal text-amber-700/80">
-                  {phaseStats}
-                </span>
-              </>
-            ) : (
-              "整形プレビュー"
-            )}
-            {busy && (
+            <span>整形プレビュー</span>
+            {status === "streaming" && (
               <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
-                <span
-                  className={`h-1.5 w-1.5 animate-pulse rounded-full ${
-                    status === "checking" ? "bg-amber-500" : "bg-teal-500"
-                  }`}
-                />
-                {status === "checking" ? "checking" : "running"}
+                <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
+                running
               </span>
             )}
           </div>
@@ -585,8 +546,19 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 )}
                 <ShieldAlert className="h-3 w-3" />
                 <span>Agentic ガイドライン検索</span>
-                <span className="font-mono text-[10px] font-normal text-amber-700/80">
-                  🔎{completedSearches} · 📄{completedReads} · 🖍️{recordedFindings}
+                <span className="inline-flex items-center gap-2 font-mono text-[10px] font-normal text-amber-700/80">
+                  <span className="inline-flex items-center gap-0.5">
+                    <Search className="h-3 w-3" />
+                    {completedSearches}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <BookOpen className="h-3 w-3" />
+                    {completedReads}
+                  </span>
+                  <span className="inline-flex items-center gap-0.5">
+                    <Highlighter className="h-3 w-3" />
+                    {recordedFindings}
+                  </span>
                 </span>
                 {status === "checking" && (
                   <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] font-normal">
@@ -646,7 +618,7 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
   if (ev.kind === "search") {
     return (
       <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
-        <span>🔎</span>
+        <Search className="h-3 w-3 shrink-0 text-amber-700" />
         <span className="font-mono text-amber-700">searchGuidelines</span>
         {ev.query && (
           <span className="truncate font-mono text-slate-600">
@@ -668,7 +640,7 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
   if (ev.kind === "read") {
     return (
       <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
-        <span>📄</span>
+        <BookOpen className="h-3 w-3 shrink-0 text-amber-700" />
         <span className="font-mono text-amber-700">readGuideline</span>
         {ev.id && <span className="font-mono text-slate-600">{ev.id}</span>}
         {ev.found === true && ev.title && (
@@ -683,7 +655,7 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
   }
   return (
     <div className="flex items-start gap-1.5 text-[11px] text-slate-700">
-      <span>🖍️</span>
+      <Highlighter className="mt-0.5 h-3 w-3 shrink-0 text-amber-700" />
       <span className="font-mono text-amber-700">recordFinding</span>
       <div className="min-w-0 flex-1">
         {ev.label && (

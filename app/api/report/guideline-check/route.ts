@@ -39,19 +39,22 @@ const MAX_FINDINGS = 6;
 // - 末尾に「## ⚠️ 人間の確認が必要な事項」セクションを 1 つ追加
 function assembleReport(originalBody: string, findings: Finding[]): string {
   let body = originalBody.trim();
-  for (const f of findings) {
+  // 本文中の該当文を **[N] ...** で囲む。N は finding の通し番号 (1 始まり)。
+  // クライアント側の MarkdownText が [N] を抽出してバッジ描画する。
+  findings.forEach((f, i) => {
     const idx = body.indexOf(f.sentenceText);
-    if (idx === -1) continue;
-    const wrapped = `**${f.sentenceText}**`;
-    body = body.slice(0, idx) + wrapped + body.slice(idx + f.sentenceText.length);
-  }
+    if (idx === -1) return;
+    const wrapped = `**[${i + 1}] ${f.sentenceText}**`;
+    body =
+      body.slice(0, idx) + wrapped + body.slice(idx + f.sentenceText.length);
+  });
   const summary =
     findings.length === 0
       ? "- 特記すべき確認事項はありません。"
       : findings
-          .map((f) => {
+          .map((f, i) => {
             const cites = f.citations.map((c) => `[doc=${c}]`).join(" ");
-            return `- **${f.label}**: ${f.reason} ${cites}`.trimEnd();
+            return `- **[${i + 1}] ${f.label}**: ${f.reason} ${cites}`.trimEnd();
           })
           .join("\n");
   return `${body}\n\n## ⚠️ 人間の確認が必要な事項\n\n${summary}\n`;

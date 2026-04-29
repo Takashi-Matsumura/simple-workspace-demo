@@ -1,5 +1,6 @@
 "use client";
 
+import { Children, type ReactNode } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -60,17 +61,7 @@ export function MarkdownText({ text, highlightStrong = false }: Props) {
           ),
           strong: ({ children }) =>
             highlightStrong ? (
-              <mark
-                className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900"
-                style={{
-                  // 蛍光ペン風 (薄い黄色のグラデ)。背景色だけだとデジタルっぽいので
-                  // box-shadow で微妙にぼかす。
-                  boxShadow: "0 0 0 1px rgba(202, 138, 4, 0.25)",
-                }}
-                title="人間の確認が必要な箇所 (Step 2 で抽出)"
-              >
-                {children}
-              </mark>
+              <HighlightMark>{children}</HighlightMark>
             ) : (
               <strong className="font-semibold text-slate-900">
                 {children}
@@ -150,5 +141,34 @@ export function MarkdownText({ text, highlightStrong = false }: Props) {
         {preprocessDocRefs(text)}
       </ReactMarkdown>
     </div>
+  );
+}
+
+// 太字の先頭が `[N] ` の場合は番号バッジを切り出して描画する。
+// これで本文中のハイライトとサマリ事項を同じ番号で視覚的につなげられる。
+function HighlightMark({ children }: { children?: ReactNode }) {
+  const arr = Children.toArray(children);
+  let badge: string | null = null;
+  let rest: ReactNode = children;
+  if (arr.length > 0 && typeof arr[0] === "string") {
+    const m = arr[0].match(/^\[(\d+)\]\s+([\s\S]*)$/);
+    if (m) {
+      badge = m[1];
+      rest = [m[2], ...arr.slice(1)] as ReactNode[];
+    }
+  }
+  return (
+    <mark
+      className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900"
+      style={{ boxShadow: "0 0 0 1px rgba(202, 138, 4, 0.25)" }}
+      title="人間の確認が必要な箇所 (Step 2 で抽出)"
+    >
+      {badge && (
+        <span className="mr-1 inline-flex h-4 min-w-[1rem] items-center justify-center rounded-full bg-amber-600 px-1 align-[1px] text-[10px] font-bold leading-none text-white">
+          {badge}
+        </span>
+      )}
+      {rest}
+    </mark>
   );
 }
