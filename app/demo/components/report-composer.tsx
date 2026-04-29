@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { MarkdownText, OPEN_PATH_EVENT } from "./markdown-text";
 import type { GuidelineHit } from "../types/opencode";
+import { getReportPromptOverrides } from "../lib/report-prompts";
 
 type Props = {
   workspaceId: string;
@@ -198,10 +199,15 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setToolEvents([]);
 
     try {
+      const overrides = getReportPromptOverrides();
       const res = await fetch("/api/report/guideline-check", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ workspaceId, path }),
+        body: JSON.stringify({
+          workspaceId,
+          path,
+          systemPromptOverride: overrides.step2,
+        }),
       });
       if (!res.ok || !res.body) {
         const errText = await res.text().catch(() => `${res.status}`);
@@ -331,6 +337,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setToolStripOverride(null);
 
     try {
+      const step1Override = getReportPromptOverrides().step1;
       const res = await fetch("/api/report/generate", {
         method: "POST",
         headers: { "content-type": "application/json" },
@@ -342,6 +349,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             helperName: helperName.trim() || undefined,
             guestName: guestName.trim() || undefined,
           },
+          systemPromptOverride: step1Override,
         }),
       });
 
