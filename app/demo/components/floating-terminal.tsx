@@ -85,7 +85,7 @@ export default function FloatingTerminal({
   // ヘッダーは表/裏共通。ライトテーマ + opencode ロゴ。
   const headerBar = (sublabel: string) => (
     <div
-      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-slate-200 border-t-2 border-t-violet-400 bg-slate-50 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
+      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
       {...headerHandlers}
     >
       <div className="flex items-center gap-1.5">
@@ -116,7 +116,7 @@ export default function FloatingTerminal({
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
       </div>
-      <OpenCodeLogo className="ml-1 text-violet-700" />
+      <OpenCodeLogo className="ml-1 text-blue-700" />
       <span className="font-mono text-[10px] text-slate-400">— {sublabel}</span>
       <div className="ml-auto flex items-center gap-1">
         <button
@@ -188,7 +188,7 @@ export default function FloatingTerminal({
       >
         {/* Front: chat */}
         <div
-          className="flex flex-col rounded-lg border border-slate-300 bg-white shadow-2xl shadow-slate-900/20"
+          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
           style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}
         >
           {headerBar("RAG / Agentic / Coding")}
@@ -208,7 +208,7 @@ export default function FloatingTerminal({
 
         {/* Back: help */}
         <div
-          className="flex flex-col rounded-lg border border-slate-300 bg-white shadow-2xl shadow-slate-900/20"
+          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
           style={{
             position: "absolute",
             inset: 0,

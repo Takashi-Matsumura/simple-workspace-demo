@@ -115,7 +115,7 @@ export function FloatingWorkspaceSelector({
           type="button"
           onClick={onStartOpencode}
           disabled={!workspace}
-          className="inline-flex shrink-0 items-center gap-1 rounded border border-[#7c3aed] bg-[#7c3aed] px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-[#6d28d9] disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
+          className="inline-flex shrink-0 items-center gap-1 rounded border border-[#2563eb] bg-[#2563eb] px-2 py-1 text-xs font-semibold text-white shadow-sm hover:bg-[#1d4ed8] disabled:border-slate-300 disabled:bg-slate-200 disabled:text-slate-400 disabled:shadow-none"
           title={workspace ? `OpenCode パネルを ${workspace.id} で起動` : "先にワークスペースを選択してください"}
         >
           <Sparkles className="h-3.5 w-3.5 shrink-0" />

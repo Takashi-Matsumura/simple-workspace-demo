@@ -22,7 +22,7 @@ export const TERMINAL_PANEL_DEFINITIONS: readonly TerminalPanelDefinition[] = [
     slot: "center",
     switcherLabel: "OpenCode",
     switcherTitle: "OpenCode パネルを最前面に",
-    switcherAccent: "#7c3aed",
+    switcherAccent: "#2563eb",
     switcherIcon: <Sparkles className="h-3 w-3" />,
   },
 ];

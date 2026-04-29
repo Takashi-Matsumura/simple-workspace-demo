@@ -129,7 +129,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
             active={mode === "agentic"}
             onClick={() => setMode("agentic")}
             label="Agentic"
-            color="#a78bfa"
+            color="#3b82f6"
             icon={<Sparkles className="h-3 w-3" />}
           />
           <ModeButton
@@ -209,12 +209,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
                   ? "Agentic に質問..."
                   : "Coding Agent に指示..."
             }
-            className="flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-violet-400 focus:outline-none disabled:opacity-50"
+            className="flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="inline-flex items-center gap-1 rounded bg-violet-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-violet-500 disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             title="送信"
           >
             <Send className="h-3 w-3" />
@@ -369,8 +369,8 @@ function RetrievedList({ hits }: { hits: RetrievedHit[] }) {
 
 function SearchDocsView({ part }: { part: SearchDocsPart }) {
   return (
-    <div className="rounded border border-violet-300 bg-violet-50 p-2">
-      <div className="font-medium text-violet-700">
+    <div className="rounded border border-blue-300 bg-blue-50 p-2">
+      <div className="font-medium text-blue-700">
         🔎 searchDocs
         {part.input?.query && (
           <span className="ml-2 font-mono text-slate-700">
@@ -398,8 +398,8 @@ function SearchDocsView({ part }: { part: SearchDocsPart }) {
 
 function ReadDocView({ part }: { part: ReadDocPart }) {
   return (
-    <div className="rounded border border-violet-300 bg-violet-50 p-2">
-      <div className="font-medium text-violet-700">
+    <div className="rounded border border-blue-300 bg-blue-50 p-2">
+      <div className="font-medium text-blue-700">
         📄 readDoc
         {part.input?.id && (
           <span className="ml-2 font-mono text-slate-700">{part.input.id}</span>

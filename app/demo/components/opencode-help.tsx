@@ -29,7 +29,7 @@ export function OpenCodeHelp({ fontSize }: Props) {
       />
 
       <ModeSection
-        color="#a78bfa"
+        color="#3b82f6"
         icon={<Sparkles className="h-3.5 w-3.5" />}
         label="Agentic"
         endpoint="POST /api/opencode/agentic (max 8 steps)"
