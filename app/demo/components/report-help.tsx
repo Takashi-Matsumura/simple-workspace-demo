@@ -1,6 +1,13 @@
 "use client";
 
-import { ClipboardList, FileCheck2, FolderTree, ShieldAlert } from "lucide-react";
+import {
+  ClipboardList,
+  FileCheck2,
+  FileCode2,
+  FolderTree,
+  Highlighter,
+  ShieldAlert,
+} from "lucide-react";
 
 type Props = {
   fontSize: number;
@@ -59,22 +66,34 @@ export function ReportHelp({ fontSize }: Props) {
         </p>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
           <li>
-            元レポートの該当文を <span className="font-mono">**…**</span>{" "}
-            で太字化 (見出し・順序・文言は変更しない)
+            LLM が <span className="font-mono">recordFinding</span>{" "}
+            ツールで該当文を 1 件ずつ記録 (最大 6 件)
           </li>
           <li>
-            末尾に{" "}
+            最終 Markdown はサーバ側で原本本文 + recordFinding 結果から
+            <strong>決定論的に組み立て</strong>られる (LLM の text 出力は使わない)
+          </li>
+          <li>
+            本文中の該当文は <Highlighter className="inline h-3 w-3" />{" "}
+            蛍光ペン風ハイライト + 番号バッジ{" "}
+            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-600 text-[8px] font-bold text-white">
+              1
+            </span>{" "}
+            で強調
+          </li>
+          <li>
+            末尾の{" "}
             <span className="font-mono">## ⚠️ 人間の確認が必要な事項</span>{" "}
-            セクションを追加し、各事項に{" "}
-            <span className="font-mono">[doc=guideline-xxx]</span> で根拠を引用
+            セクションは同じ番号バッジで本文と紐付き、{" "}
+            <span className="font-mono">[doc=guideline-xxx]</span>{" "}
+            で根拠を引用
           </li>
           <li>
-            引用は readGuideline で本文を読んだガイドラインのみ。引用ボタンを
-            クリックすると Workspace ツリーで該当ガイドラインが開きます
+            引用ボタンをクリックすると Workspace ツリーで該当ガイドラインが開く
           </li>
           <li>
-            Step 2 は Step 1 で保存した同 path に上書き保存します。失敗しても
-            Step 1 のファイルは残ります
+            Step 2 は Step 1 で保存した同 path に上書き保存。失敗しても Step 1
+            のファイルは残る (警告メッセージで通知)
           </li>
         </ul>
         <p className="mt-1 text-slate-700">参照する 6 件のガイドライン:</p>
@@ -201,23 +220,54 @@ export function ReportHelp({ fontSize }: Props) {
         </ul>
       </Section>
 
+      <Section
+        color="#0d9488"
+        icon={<FileCode2 className="h-3.5 w-3.5" />}
+        label="システムプロンプトの上書き"
+      >
+        <p className="mb-1 text-slate-700">
+          裏面のタブ「<span className="font-semibold">システムプロンプト</span>」
+          で、Step 1 / Step 2 のシステムプロンプトをそれぞれ編集できます。
+          初期値はサーバ側のデフォルト
+          (<span className="font-mono">REPORT_SYSTEM_PROMPT</span> /{" "}
+          <span className="font-mono">GUIDELINE_CHECK_PROMPT</span>) が
+          そのまま入っています。
+        </p>
+        <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+          <li>
+            「保存」を押すと編集した値がブラウザの localStorage
+            に保持され (workspace 単位ではなく端末単位)、以降のリクエストで
+            その値が使われる
+          </li>
+          <li>
+            各フィールドの「デフォルトに戻す」で、その Step
+            だけテキストとローカル保存値を初期値にリセット
+          </li>
+          <li>「すべてデフォルトに戻す」で Step 1 / Step 2 を一括リセット</li>
+        </ul>
+      </Section>
+
       <div className="mt-4 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
         <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
           tips
         </div>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
           <li>
-            生成中はパネル右上の{" "}
-            <span className="font-mono text-teal-700">running</span>{" "}
-            インジケータが点滅し、終わると入力欄に自動でフォーカスが戻ります
+            「整形してファイル保存」で Step 1 → Step 2 が自動連続実行される (1 クリック)
           </li>
-          <li>「クリア」でフォームとプレビューをリセットできます (生成中は無効)</li>
-          <li>パネル右下の ▢ をドラッグするとサイズ変更できます</li>
-          <li>ヘッダー右の -/+ で本文のフォントサイズを変えられます</li>
-          <li>左上のトラフィックライト 🔴🟡🟢 は 閉じる / 最小化 / 80% フィット表示</li>
+          <li>
+            Step 2 中は右ペインの「Agentic ガイドライン検索」帯に
+            searchGuidelines / readGuideline / recordFinding の履歴がストリーム表示
+          </li>
+          <li>
+            Step 2 完了後、ストリップは自動で折り畳み、本文プレビューを最大化。
+            ヘッダ行をクリックすれば再展開できる
+          </li>
           <li>
             ファイル本文は最大 64KB、Workspace あたり最大 100 ファイルまで
           </li>
+          <li>パネル右下の ▢ をドラッグするとサイズ変更、ヘッダー右の -/+ でフォント調整</li>
+          <li>左上のトラフィックライト 🔴🟡🟢 は 閉じる / 最小化 / 80% フィット表示</li>
         </ul>
       </div>
     </div>

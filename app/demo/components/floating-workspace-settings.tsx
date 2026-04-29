@@ -43,8 +43,16 @@ export function FloatingWorkspaceSettings({ fontSize }: Props) {
       style={{ fontSize }}
     >
       <Section title="App">
-        <Row icon={<Info className="h-3 w-3" />} label="name" value="simple-workspace-demo" />
-        <Row icon={<Info className="h-3 w-3" />} label="phase" value="A + B (RAG / Agentic / Coding)" />
+        <Row
+          icon={<Info className="h-3 w-3" />}
+          label="name"
+          value="simple-workspace-demo"
+        />
+        <Row
+          icon={<Info className="h-3 w-3" />}
+          label="features"
+          value="OpenCode (RAG vs Agentic) + 訪問介護レポート (整形 + Agentic ガイドライン照合)"
+        />
       </Section>
 
       <Section title="Account">
@@ -68,13 +76,43 @@ export function FloatingWorkspaceSettings({ fontSize }: Props) {
         />
       </Section>
 
+      <Section title="Files">
+        <Row
+          icon={<Folder className="h-3 w-3" />}
+          label="corpus/"
+          value="社内文書 16 件 (workspace 作成 / 再 open 時に自動 seed)"
+        />
+        <Row
+          icon={<Folder className="h-3 w-3" />}
+          label="reports/"
+          value="訪問介護レポート出力先。ツリー右の × で削除可能"
+        />
+      </Section>
+
       <Section title="UI">
-        <Row icon={<Type className="h-3 w-3" />} label="font size" value={`${fontSize} px`} />
+        <Row
+          icon={<Type className="h-3 w-3" />}
+          label="font size"
+          value={`${fontSize} px`}
+        />
       </Section>
 
       <Section title="Storage">
-        <Row icon={<Database className="h-3 w-3" />} label="db" value="SQLite (prisma/dev.db)" />
-        <Row icon={<Database className="h-3 w-3" />} label="files" value="WorkspaceFile (Coding mode)" />
+        <Row
+          icon={<Database className="h-3 w-3" />}
+          label="db"
+          value="SQLite (prisma/dev.db) via Prisma 7"
+        />
+        <Row
+          icon={<Database className="h-3 w-3" />}
+          label="files"
+          value="WorkspaceFile (path 単位の仮想 FS)"
+        />
+        <Row
+          icon={<Database className="h-3 w-3" />}
+          label="limits"
+          value="64KB / file, 100 files / workspace"
+        />
       </Section>
     </div>
   );

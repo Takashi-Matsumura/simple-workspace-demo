@@ -18,7 +18,7 @@ import { use3dFlip } from "../hooks/use-3d-flip";
 import { terminalFontSizeKey } from "../lib/storage-keys";
 import { OpenCodeLogo } from "./opencode-logo";
 import { OpenCodeHelp } from "./opencode-help";
-import { ReportHelp } from "./report-help";
+import { ReportBack } from "./report-back";
 
 const OpenCodeChat = dynamic(() => import("./opencode-chat"), {
   ssr: false,
@@ -246,7 +246,7 @@ export default function FloatingTerminal({
           {!minimized && (
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-lg bg-white">
               {variant === "report" ? (
-                <ReportHelp fontSize={fontSize} />
+                <ReportBack fontSize={fontSize} />
               ) : (
                 <OpenCodeHelp fontSize={fontSize} />
               )}

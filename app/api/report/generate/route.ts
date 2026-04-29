@@ -26,6 +26,9 @@ const RequestBody = z.object({
     })
     .optional()
     .default({}),
+  // 裏面「システムプロンプト」タブで保存されたユーザ上書き。
+  // 空 / 未指定ならデフォルト (REPORT_SYSTEM_PROMPT) を使う。
+  systemPromptOverride: z.string().min(1).max(16000).optional(),
 });
 
 export async function POST(req: Request) {
@@ -35,7 +38,7 @@ export async function POST(req: Request) {
   const parsed = RequestBody.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.message }, 400);
 
-  const { workspaceId, freeText, meta } = parsed.data;
+  const { workspaceId, freeText, meta, systemPromptOverride } = parsed.data;
   if (!(await userOwnsWorkspace(user.id, workspaceId))) {
     return json({ error: "workspace not found" }, 404);
   }
@@ -49,7 +52,7 @@ export async function POST(req: Request) {
 
   const result = streamText({
     model: localModel,
-    system: REPORT_SYSTEM_PROMPT,
+    system: systemPromptOverride ?? REPORT_SYSTEM_PROMPT,
     prompt: userPrompt,
     onFinish: async ({ text }) => {
       try {

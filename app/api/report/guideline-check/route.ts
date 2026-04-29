@@ -23,6 +23,9 @@ const RequestBody = z.object({
     .regex(/^reports\/\d{4}-\d{2}-\d{2}-\d{2}\.md$/, {
       message: "path must match reports/YYYY-MM-DD-NN.md",
     }),
+  // 裏面「システムプロンプト」タブで保存されたユーザ上書き。
+  // 空 / 未指定ならデフォルト (GUIDELINE_CHECK_PROMPT) を使う。
+  systemPromptOverride: z.string().min(1).max(16000).optional(),
 });
 
 type Finding = {
@@ -67,7 +70,7 @@ export async function POST(req: Request) {
   const parsed = RequestBody.safeParse(await req.json().catch(() => ({})));
   if (!parsed.success) return json({ error: parsed.error.message }, 400);
 
-  const { workspaceId, path } = parsed.data;
+  const { workspaceId, path, systemPromptOverride } = parsed.data;
   if (!(await userOwnsWorkspace(user.id, workspaceId))) {
     return json({ error: "workspace not found" }, 404);
   }
@@ -217,7 +220,7 @@ ${originalBody.trim()}`;
 
   const result = streamText({
     model: localModel,
-    system: GUIDELINE_CHECK_PROMPT,
+    system: systemPromptOverride ?? GUIDELINE_CHECK_PROMPT,
     prompt: userPrompt,
     tools,
     // step 数 = LLM 呼び出し回数 (各 tool 呼び出しごとに 1 step 消費)。

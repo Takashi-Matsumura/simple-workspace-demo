@@ -14,8 +14,9 @@ export function OpenCodeHelp({ fontSize }: Props) {
       style={{ fontSize }}
     >
       <p className="mb-3 text-slate-500">
-        OpenCode パネルは社内文書の RAG と Agentic を並べて比較するデモです。
-        同じ質問を一度に投げると、左右で回答プロセスがどう変わるかを観察できます。
+        OpenCode パネルは社内文書 (16 件: spec / faq / incident / guideline) の
+        RAG と Agentic を並べて比較するデモです。同じ質問を一度に投げると、
+        左右で回答プロセスがどう変わるかを観察できます。
       </p>
 
       <ModeSection
@@ -23,9 +24,12 @@ export function OpenCodeHelp({ fontSize }: Props) {
         icon={<FileSearch className="h-3.5 w-3.5" />}
         label="RAG"
         endpoint="POST /api/opencode/rag"
-        desc="キーワード検索 1 回 → ヒットしたスニペットだけを LLM に渡して回答。"
+        desc="キーワード検索 1 回 → ヒットしたチャンクを LLM に渡して回答。embedding やベクトル DB は使わず、TF (出現回数) ベースの素朴な検索。"
         strong={["単発ヒットで答えが完結する質問", "応答が速い"]}
-        weak={["多段ホップが必要な質問", "用語の表現ゆれ (例: ログイン / サインイン)"]}
+        weak={[
+          "多段ホップが必要な質問 (情報が複数文書に分散)",
+          "用語の表現ゆれ (例: ログイン / サインイン)",
+        ]}
       />
 
       <ModeSection
@@ -33,21 +37,60 @@ export function OpenCodeHelp({ fontSize }: Props) {
         icon={<Sparkles className="h-3.5 w-3.5" />}
         label="Agentic"
         endpoint="POST /api/opencode/agentic (max 8 steps)"
-        desc="LLM が searchDocs / readDoc を自律的に呼ぶ。必要なら別の語彙で再検索したり、本文全体を読みに行ったりする。"
-        strong={["多段ホップ", "用語ゆれをまたぐ調査", "複数文書をまとめて答える"]}
-        weak={["1 回検索で十分な質問は冗長になる"]}
+        desc="LLM が searchDocs / readDoc を自律的に呼ぶ。必要なら別の語彙で再検索したり、本文全体を読みに行ったりする。tool 呼び出しの履歴と Thinking もストリーム表示される。"
+        strong={[
+          "多段ホップ調査",
+          "用語ゆれ (synonym) をまたぐ調査",
+          "複数文書の情報をまとめて回答する",
+        ]}
+        weak={["1 回検索で十分な質問は冗長になる", "応答が遅い"]}
       />
+
+      <div className="mb-3 rounded border border-slate-200 bg-white px-2 py-1.5">
+        <div className="mb-0.5 font-semibold text-slate-700">
+          コーパスの内訳 (16 件)
+        </div>
+        <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
+          <li>
+            <span className="font-mono text-slate-700">spec-*</span> — 製品仕様
+            (Acme Cloud のプラン / API 上限など)
+          </li>
+          <li>
+            <span className="font-mono text-slate-700">faq-*</span> — よくある質問
+            (ログイン / 請求 / 料金など)
+          </li>
+          <li>
+            <span className="font-mono text-slate-700">incident-*</span> —
+            障害事例 (過去の RCA レポート)
+          </li>
+          <li>
+            <span className="font-mono text-slate-700">guideline-*</span> —
+            介護ガイドライン (訪問レポートの Step 2 で参照)
+          </li>
+        </ul>
+      </div>
 
       <div className="mt-4 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
         <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
           tips
         </div>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
-          <li>送信ボタンを押すと、左右の RAG / Agentic に同じ質問が同時に投げられます。</li>
+          <li>
+            送信ボタンを押すと、左右の RAG / Agentic に同じ質問が同時に投げられます。
+          </li>
+          <li>
+            プリセット質問は「単発ヒット (RAG 有利)」「多段ホップ (Agentic 有利)」
+            「語彙ギャップ (Agentic 有利)」の 3 種類。
+          </li>
           <li>パネル右下の ▢ をドラッグするとサイズ変更できます。</li>
           <li>ヘッダー右の -/+ で会話履歴のフォントサイズを変えられます。</li>
-          <li>左上のトラフィックライト 🔴🟡🟢 は閉じる / 最小化 / 80% フィット表示。</li>
-          <li>回答内の <span className="font-mono">[doc=...]</span> をクリックすると Workspace パネルでその文書が開きます。</li>
+          <li>
+            左上のトラフィックライト 🔴🟡🟢 は閉じる / 最小化 / 80% フィット表示。
+          </li>
+          <li>
+            回答内の <span className="font-mono">[doc=...]</span> をクリックすると
+            Workspace パネルでその文書が開きます。
+          </li>
         </ul>
       </div>
     </div>
@@ -78,12 +121,10 @@ function ModeSection({
         <span className="font-semibold">{label}</span>
       </div>
       <div className="mb-1 font-mono text-[10px] text-slate-400">{endpoint}</div>
-      <div className="mb-1 text-slate-700">{desc}</div>
-      <div className="grid grid-cols-1 gap-1 sm:grid-cols-2">
+      <p className="mb-1 text-slate-700">{desc}</p>
+      <div className="grid grid-cols-2 gap-2 text-[11px]">
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-emerald-600">
-            得意
-          </div>
+          <div className="text-emerald-700">得意</div>
           <ul className="list-disc pl-4 text-slate-600">
             {strong.map((s) => (
               <li key={s}>{s}</li>
@@ -91,9 +132,7 @@ function ModeSection({
           </ul>
         </div>
         <div>
-          <div className="text-[10px] uppercase tracking-wider text-rose-600">
-            苦手
-          </div>
+          <div className="text-rose-700">苦手</div>
           <ul className="list-disc pl-4 text-slate-600">
             {weak.map((s) => (
               <li key={s}>{s}</li>
