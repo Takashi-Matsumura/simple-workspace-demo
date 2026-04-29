@@ -44,6 +44,8 @@ type FloatingWorkspaceProps = {
   onZoomToFit?: (rect: { x: number; y: number; w: number; h: number }) => void;
   z: number;
   onFocus?: () => void;
+  sandboxEnabled?: boolean;
+  onToggleSandbox?: () => void;
 };
 
 export default function FloatingWorkspace(props: FloatingWorkspaceProps) {
@@ -104,6 +106,8 @@ function FloatingWorkspaceInner({
   onZoomToFit,
   z,
   onFocus,
+  sandboxEnabled,
+  onToggleSandbox,
 }: FloatingWorkspaceProps) {
   const { workspace, onWorkspaceChange, notice, error } = useWorkspace();
   const [scenePos, setScenePos] = useState<ScenePos>(() => {
@@ -269,6 +273,8 @@ function FloatingWorkspaceInner({
             headerHandlers={headerHandlers}
             flipped={flipped}
             onFlip={flip}
+            sandboxEnabled={sandboxEnabled}
+            onToggleSandbox={onToggleSandbox}
           />
 
           <FloatingWorkspaceSelector

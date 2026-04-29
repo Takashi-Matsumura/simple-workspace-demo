@@ -1,11 +1,21 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { cookieHeader, createSession, hashPassword, SESSION_COOKIE } from "@/lib/auth";
+import { ensureContainer } from "@/lib/docker";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,32}$/;
+
+function ensureUserContainer(userId: string): void {
+  ensureContainer(userId, { networkMode: "bridge" }).catch((err: unknown) => {
+    console.warn(
+      `[auth] ensureContainer failed for user ${userId}:`,
+      err instanceof Error ? err.message : err,
+    );
+  });
+}
 
 export async function POST(request: NextRequest) {
   const body = (await request.json().catch(() => ({}))) as {
@@ -39,6 +49,7 @@ export async function POST(request: NextRequest) {
   const passwordHash = await hashPassword(password);
   const user = await prisma.user.create({ data: { username, passwordHash } });
   const { cookieValue, expiresAt } = await createSession(user.id);
+  ensureUserContainer(user.id);
   const res = NextResponse.json({ user: { id: user.id, username: user.username } });
   res.headers.set(
     "Set-Cookie",

@@ -14,6 +14,8 @@ type Props = {
   flipped?: boolean;
   onFlip?: () => void;
   title?: string;
+  sandboxEnabled?: boolean;
+  onToggleSandbox?: () => void;
 };
 
 export function FloatingWorkspaceHeader({
@@ -26,6 +28,8 @@ export function FloatingWorkspaceHeader({
   flipped,
   onFlip,
   title = "workspaces",
+  sandboxEnabled,
+  onToggleSandbox,
 }: Props) {
   const { workspace } = useWorkspace();
   return (
@@ -46,6 +50,12 @@ export function FloatingWorkspaceHeader({
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
         <span className="font-mono font-medium text-slate-700">{title}</span>
+        {onToggleSandbox && (
+          <SandboxToggle
+            enabled={!!sandboxEnabled}
+            onToggle={onToggleSandbox}
+          />
+        )}
       </div>
       <div className="flex items-center gap-2">
         <span className="truncate font-mono text-[10px] text-slate-400">
@@ -91,5 +101,47 @@ export function FloatingWorkspaceHeader({
         </div>
       </div>
     </div>
+  );
+}
+
+function SandboxToggle({
+  enabled,
+  onToggle,
+}: {
+  enabled: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={enabled}
+      onClick={(e) => {
+        e.stopPropagation();
+        onToggle();
+      }}
+      onPointerDown={(e) => e.stopPropagation()}
+      title={
+        enabled
+          ? "Sandbox を無効化 (Shell パネルを閉じる)"
+          : "Sandbox を有効化 (Shell パネルを開けるように)"
+      }
+      className="ml-1 inline-flex items-center gap-1.5 rounded-full border border-slate-300 bg-white px-2 py-0.5 font-mono text-[10px] text-slate-600 hover:bg-slate-50"
+    >
+      <span
+        className={`relative inline-block h-3.5 w-7 shrink-0 rounded-full transition-colors ${
+          enabled ? "bg-purple-500" : "bg-slate-300"
+        }`}
+      >
+        <span
+          className={`absolute top-0.5 inline-block h-2.5 w-2.5 rounded-full bg-white shadow transition-[left] ${
+            enabled ? "left-4" : "left-0.5"
+          }`}
+        />
+      </span>
+      <span className={enabled ? "text-purple-700" : "text-slate-500"}>
+        Sandbox {enabled ? "ON" : "OFF"}
+      </span>
+    </button>
   );
 }
