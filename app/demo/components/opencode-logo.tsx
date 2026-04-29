@@ -1,11 +1,18 @@
 type Props = {
   className?: string;
   showText?: boolean;
+  // 「code」部分のアクセント色 (Tailwind class)。className は SVG の
+  // currentColor にしか伝わらないので、テキスト側のテーマ色は別 prop で渡す。
+  accentClassName?: string;
 };
 
 // オリジナル opencode (sst/opencode) のヘッダーを意識したシンプルなマーク。
 // 山形 ‹ › を縦に重ねて “終端 / コード” のニュアンスを表現する。
-export function OpenCodeLogo({ className, showText = true }: Props) {
+export function OpenCodeLogo({
+  className,
+  showText = true,
+  accentClassName = "text-blue-700",
+}: Props) {
   return (
     <span className={`inline-flex items-center gap-1.5 ${className ?? ""}`}>
       <svg
@@ -24,7 +31,7 @@ export function OpenCodeLogo({ className, showText = true }: Props) {
       {showText && (
         <span className="font-mono text-[12px] font-semibold tracking-tight">
           <span className="text-slate-500">open</span>
-          <span className="text-blue-700">code</span>
+          <span className={accentClassName}>code</span>
         </span>
       )}
     </span>

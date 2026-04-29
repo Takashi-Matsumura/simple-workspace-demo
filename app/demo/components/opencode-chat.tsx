@@ -105,7 +105,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
       {/* 2 カラム: RAG | Agentic */}
       <div className="flex min-h-0 flex-1">
         <ChatColumn
-          label="RAG"
+          label="RAG検索"
           color="#10b981"
           icon={<FileSearch className="h-3 w-3" />}
           mode="rag"
@@ -116,7 +116,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           emptyHint="RAG: 1 回キーワード検索 → LLM がスニペットだけを根拠に回答します。多段ホップや語彙ギャップが必要な質問では弱い場面が見えます。"
         />
         <ChatColumn
-          label="Agentic"
+          label="Agentic検索"
           color="#3b82f6"
           icon={<Sparkles className="h-3 w-3" />}
           mode="agentic"

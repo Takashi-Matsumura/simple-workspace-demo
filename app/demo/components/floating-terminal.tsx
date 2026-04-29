@@ -18,8 +18,12 @@ import { use3dFlip } from "../hooks/use-3d-flip";
 import { terminalFontSizeKey } from "../lib/storage-keys";
 import { OpenCodeLogo } from "./opencode-logo";
 import { OpenCodeHelp } from "./opencode-help";
+import { ReportHelp } from "./report-help";
 
 const OpenCodeChat = dynamic(() => import("./opencode-chat"), {
+  ssr: false,
+});
+const ReportComposer = dynamic(() => import("./report-composer"), {
   ssr: false,
 });
 
@@ -27,7 +31,7 @@ type ScenePos = { x: number; y: number };
 type SceneSize = { w: number; h: number };
 
 export type TerminalSession = { workspaceId: string; nonce: number };
-export type TerminalVariant = "opencode";
+export type TerminalVariant = "opencode" | "report";
 
 // ビューポート中心にパネル中央が来るように scenePos を逆算。
 function defaultScenePos(
@@ -82,10 +86,22 @@ export default function FloatingTerminal({
   const left = (scenePos.x + view.x) * view.zoom;
   const top = (scenePos.y + view.y) * view.zoom;
 
+  // variant ごとのテーマカラー: フレーム枠 / ヘッダ背景 / ヘッダ下ボーダー /
+  // ロゴ文字色 / リサイズハンドル / 副題文言。
+  const isReport = variant === "report";
+  const frameBorder = isReport ? "border-teal-400" : "border-blue-400";
+  const headerBg = isReport ? "bg-teal-100" : "bg-blue-100";
+  const headerBorder = isReport ? "border-teal-300" : "border-blue-300";
+  const logoColor = isReport ? "text-teal-700" : "text-blue-700";
+  const resizeColor = isReport
+    ? "rgba(13,148,136,0.55)"
+    : "rgba(59,130,246,0.55)";
+  const frontSublabel = isReport ? "訪問介護レポート" : "RAG vs Agentic";
+
   // ヘッダーは表/裏共通。ライトテーマ + opencode ロゴ。
   const headerBar = (sublabel: string) => (
     <div
-      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-blue-300 bg-blue-100 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
+      className={`flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b ${headerBorder} ${headerBg} px-3 text-xs text-slate-600 active:cursor-grabbing select-none`}
       {...headerHandlers}
     >
       <div className="flex items-center gap-1.5">
@@ -116,7 +132,7 @@ export default function FloatingTerminal({
           <Maximize2 className="hidden h-2.5 w-2.5 stroke-[3] text-black/60 group-hover:block" style={{ margin: "0.5px" }} />
         </button>
       </div>
-      <OpenCodeLogo className="ml-1 text-blue-700" />
+      <OpenCodeLogo className={`ml-1 ${logoColor}`} accentClassName={logoColor} />
       <span className="font-mono text-[10px] text-slate-400">— {sublabel}</span>
       <div className="ml-auto flex items-center gap-1">
         <button
@@ -153,7 +169,7 @@ export default function FloatingTerminal({
       className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
       {...resizeHandlers}
       style={{
-        background: "linear-gradient(135deg, transparent 50%, rgba(59,130,246,0.55) 50%)",
+        background: `linear-gradient(135deg, transparent 50%, ${resizeColor} 50%)`,
       }}
     />
   );
@@ -188,14 +204,24 @@ export default function FloatingTerminal({
       >
         {/* Front: chat */}
         <div
-          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
+          className={`flex flex-col rounded-lg border-2 ${frameBorder} bg-white shadow-2xl shadow-slate-900/20`}
           style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}
         >
-          {headerBar("RAG vs Agentic")}
+          {headerBar(frontSublabel)}
           {!minimized && (
             <div className="relative flex-1 overflow-hidden rounded-b-lg bg-white">
               {session ? (
-                <OpenCodeChat workspaceId={session.workspaceId} fontSize={fontSize} />
+                variant === "report" ? (
+                  <ReportComposer
+                    workspaceId={session.workspaceId}
+                    fontSize={fontSize}
+                  />
+                ) : (
+                  <OpenCodeChat
+                    workspaceId={session.workspaceId}
+                    fontSize={fontSize}
+                  />
+                )
               ) : (
                 <div className="flex h-full w-full items-center justify-center px-6 text-center font-mono text-xs text-slate-400">
                   Workspace パネルからワークスペースを選択して起動してください
@@ -208,7 +234,7 @@ export default function FloatingTerminal({
 
         {/* Back: help */}
         <div
-          className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
+          className={`flex flex-col rounded-lg border-2 ${frameBorder} bg-white shadow-2xl shadow-slate-900/20`}
           style={{
             position: "absolute",
             inset: 0,
@@ -219,7 +245,11 @@ export default function FloatingTerminal({
           {headerBar("ヘルプ")}
           {!minimized && (
             <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-b-lg bg-white">
-              <OpenCodeHelp fontSize={fontSize} />
+              {variant === "report" ? (
+                <ReportHelp fontSize={fontSize} />
+              ) : (
+                <OpenCodeHelp fontSize={fontSize} />
+              )}
               {resizeHandle}
             </div>
           )}
