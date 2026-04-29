@@ -8,11 +8,12 @@ export type RetrievedHit = {
   score: number;
 };
 
-export type OpencodeMode = "rag" | "agentic";
+export type OpencodeMode = "rag" | "agentic" | "coding";
 
 export type OpencodeMetadata =
   | { mode: "rag"; retrieved: RetrievedHit[] }
-  | { mode: "agentic" };
+  | { mode: "agentic" }
+  | { mode: "coding" };
 
 export type OpencodeUIMessage = UIMessage<OpencodeMetadata>;
 
@@ -39,4 +40,47 @@ export type ReadDocPart = {
         category: string;
         content: string;
       };
+};
+
+export type WorkspaceFileSummary = {
+  path: string;
+  size: number;
+  updatedAt: string;
+};
+
+export type ListFilesPart = {
+  type: "tool-listFiles";
+  state: string;
+  input?: { prefix?: string };
+  output?:
+    | { ok: true; files: WorkspaceFileSummary[] }
+    | { ok: false; error: string };
+};
+
+export type ReadFilePart = {
+  type: "tool-readFile";
+  state: string;
+  input?: { path: string };
+  output?:
+    | { ok: true; found: false }
+    | { ok: true; found: true; path: string; content: string; updatedAt: string }
+    | { ok: false; error: string };
+};
+
+export type WriteFilePart = {
+  type: "tool-writeFile";
+  state: string;
+  input?: { path: string; content: string };
+  output?:
+    | { ok: true; path: string; size: number; created: boolean }
+    | { ok: false; error: string };
+};
+
+export type DeleteFilePart = {
+  type: "tool-deleteFile";
+  state: string;
+  input?: { path: string };
+  output?:
+    | { ok: true; path: string; deleted: boolean }
+    | { ok: false; error: string };
 };
