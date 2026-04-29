@@ -179,29 +179,25 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           ))}
         </div>
 
-        {/* プリセット (入力フォームの直上) */}
-        <div className="flex shrink-0 flex-wrap gap-1.5 border-t border-slate-200 bg-white px-3 py-1.5">
+        {/* プリセット + 入力フォーム (1 行にまとめる) */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            submit(input);
+          }}
+          className="flex shrink-0 items-center gap-1.5 border-t border-slate-200 bg-slate-50 px-3 py-2"
+        >
           {PRESETS_BY_MODE[mode].map((p) => (
             <button
               key={p.label}
               type="button"
               onClick={() => setInput(p.text)}
               disabled={busy}
-              className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+              className="shrink-0 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
             >
               {p.label}
             </button>
           ))}
-        </div>
-
-        {/* 入力フォーム */}
-        <form
-          onSubmit={(e) => {
-            e.preventDefault();
-            submit(input);
-          }}
-          className="flex shrink-0 items-center gap-2 border-t border-slate-200 bg-slate-50 px-3 py-2"
-        >
           <input
             value={input}
             onChange={(e) => setInput(e.target.value)}
@@ -213,12 +209,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
                   ? "Agentic に質問..."
                   : "Coding Agent に指示..."
             }
-            className="flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="inline-flex items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             title="送信"
           >
             <Send className="h-3 w-3" />
