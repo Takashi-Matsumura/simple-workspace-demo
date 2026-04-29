@@ -189,11 +189,20 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         throw new Error(errText || `HTTP ${res.status}`);
       }
 
+      let finalContent: string | null = null;
       for await (const chunk of parseUIMessageStream(res.body)) {
         const t = chunk.type as string;
         // text-delta (LLM スクラッチ) は最終ファイルに使わないので無視する。
         if (t === "start-step") {
           setStepIndex((n) => n + 1);
+        } else if (t === "finish" || t === "message-metadata") {
+          // サーバが messageMetadata に最終ファイル内容を載せて送ってくる。
+          const meta = chunk.messageMetadata as
+            | { finalContent?: string }
+            | undefined;
+          if (meta && typeof meta.finalContent === "string") {
+            finalContent = meta.finalContent;
+          }
         } else if (t === "tool-input-start") {
           const toolCallId = String(chunk.toolCallId);
           const toolName = String(chunk.toolName);
@@ -273,22 +282,10 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         }
       }
 
-      // 最終ファイルはサーバー側で原本本文 + recordFinding 結果から決定論的に
-      // 組み立てられている。LLM の text-delta は途中のスクラッチなので、
-      // ここで再 fetch して画面プレビューを最終 (ハイライト入り) で置き換える。
-      try {
-        const fileRes = await fetch(
-          `/api/opencode/files?workspaceId=${encodeURIComponent(workspaceId)}&path=${encodeURIComponent(path)}`,
-        );
-        const j = (await fileRes.json().catch(() => ({}))) as {
-          found?: boolean;
-          content?: string;
-        };
-        if (j.found && typeof j.content === "string") {
-          setPreviewText(j.content);
-        }
-      } catch {
-        // 取得失敗時はそのまま (LLM のスクラッチ出力が previewText に残っている)
+      // サーバが messageMetadata で組み立て済みの最終本文を送ってくる。
+      // ここでプレビューをハイライト入りに置き換える (file fetch 不要)。
+      if (finalContent !== null) {
+        setPreviewText(finalContent);
       }
       setStatus("done");
       // Step 2 で同 path を上書き保存しているので、workspace tree もリフレッシュ。

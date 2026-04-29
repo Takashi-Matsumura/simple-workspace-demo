@@ -145,15 +145,40 @@ export async function POST(req: Request) {
         if (findings.length >= MAX_FINDINGS) {
           return { ok: false as const, error: "max findings reached (6)" };
         }
-        const trimmed = sentenceText.trim();
-        if (seenSentences.has(trimmed)) {
+        // LLM がしばしば付けてしまう箇条書きマーカ・前後空白・全角空白を取り除いて
+        // 本文と照合する。それでも一致しなければ、近そうな行を hint で返して
+        // LLM に再試行のヒントを与える。
+        const normalized = sentenceText
+          .trim()
+          .replace(/^[\s　\-・*]+/, "")
+          .trim();
+        if (!normalized) {
+          return { ok: false as const, error: "sentenceText is empty" };
+        }
+        if (seenSentences.has(normalized)) {
           return { ok: false as const, error: "duplicate sentence" };
         }
-        if (!originalBody.includes(trimmed)) {
+        if (!originalBody.includes(normalized)) {
+          // 部分一致するもう少し短い断片を探してヒントにする (10 文字以上の連続一致)
+          const hints: string[] = [];
+          for (let len = Math.min(normalized.length, 40); len >= 10; len -= 5) {
+            for (let i = 0; i + len <= normalized.length; i += 5) {
+              const slice = normalized.slice(i, i + len);
+              if (originalBody.includes(slice)) {
+                hints.push(slice);
+                break;
+              }
+            }
+            if (hints.length > 0) break;
+          }
           return {
             ok: false as const,
             error:
-              "sentenceText must be a verbatim substring of the original report body",
+              "sentenceText must be a verbatim substring of the original report body. 元レポート本文の一文をそのままコピー&ペーストしてください。",
+            hint:
+              hints.length > 0
+                ? `近い断片が本文に存在します: 「${hints[0]}…」を含む完全な一文を探して再度送ってください。`
+                : undefined,
           };
         }
         const valid = citations.filter((c) => {
@@ -163,12 +188,13 @@ export async function POST(req: Request) {
         if (valid.length === 0) {
           return {
             ok: false as const,
-            error: "citations must include at least one valid guideline id",
+            error:
+              "citations must include at least one valid guideline-xxx id",
           };
         }
-        seenSentences.add(trimmed);
+        seenSentences.add(normalized);
         findings.push({
-          sentenceText: trimmed,
+          sentenceText: normalized,
           label: label.trim(),
           reason: reason.trim(),
           citations: valid,
@@ -191,7 +217,9 @@ ${originalBody.trim()}`;
     system: GUIDELINE_CHECK_PROMPT,
     prompt: userPrompt,
     tools,
-    stopWhen: stepCountIs(8),
+    // step 数 = LLM 呼び出し回数 (各 tool 呼び出しごとに 1 step 消費)。
+    // search 3 + read 3 + recordFinding 6 + α を見込んで 16 に設定。
+    stopWhen: stepCountIs(16),
     onFinish: async () => {
       try {
         const finalContent = assembleReport(originalBody, findings);
@@ -209,6 +237,17 @@ ${originalBody.trim()}`;
     messageMetadata: ({ part }) => {
       if (part.type === "start") {
         return { mode: "guideline-check" as const };
+      }
+      // finish 時点で全 tool 呼び出しは完了している (LLM のループ条件)。
+      // 最終ファイルを決定論的に組み立てて、クライアントへ同じ stream で届ける。
+      // これでクライアント側の追加 fetch やタイミング問題なく previewText を
+      // 確定できる。
+      if (part.type === "finish") {
+        return {
+          mode: "guideline-check" as const,
+          finalContent: assembleReport(originalBody, findings),
+          findingsCount: findings.length,
+        };
       }
     },
   });
