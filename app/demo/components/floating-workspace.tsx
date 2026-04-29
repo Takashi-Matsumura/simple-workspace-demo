@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
+import { OPEN_DOC_EVENT, type OpenDocEventDetail } from "./markdown-text";
 import type { View } from "./whiteboard-canvas";
 import { usePointerDrag } from "../hooks/use-pointer-drag";
 import { usePointerResize } from "../hooks/use-pointer-resize";
@@ -116,7 +117,31 @@ function FloatingWorkspaceInner({
     max: 20,
   });
 
-  const { flipped, toggle: flip } = use3dFlip(false);
+  const { flipped, setFlipped } = use3dFlip(false);
+  const flip = useCallback(() => setFlipped((f) => !f), [setFlipped]);
+
+  // 回答中の `[doc=xxx]` クリックで該当ファイルを tree+preview に開く。
+  // doc id は corpus の category prefix から path を組み立てる。
+  useEffect(() => {
+    const handler = (ev: Event) => {
+      const detail = (ev as CustomEvent<OpenDocEventDetail>).detail;
+      const id = detail?.id;
+      if (!id || !workspace) return;
+      const category = id.startsWith("spec-")
+        ? "spec"
+        : id.startsWith("faq-")
+          ? "faq"
+          : id.startsWith("incident-")
+            ? "incident"
+            : null;
+      if (!category) return;
+      setSelectedPath(`corpus/${category}/${id}.md`);
+      setFlipped(false);
+      onFocus?.();
+    };
+    window.addEventListener(OPEN_DOC_EVENT, handler);
+    return () => window.removeEventListener(OPEN_DOC_EVENT, handler);
+  }, [workspace, setFlipped, onFocus]);
 
   const headerHandlers = usePointerDrag(view, scenePos, setScenePos, {
     skipSelector: "button,input",

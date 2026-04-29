@@ -7,6 +7,18 @@ type Props = {
   text: string;
 };
 
+// LLM が回答に埋め込む `[doc=xxx]` を、特殊な hash リンク `#doc/xxx` を持つ
+// Markdown リンクに置き換える。後段で <a> をボタン化し、クリックで Workspace
+// パネルにファイルを開かせる。
+function preprocessDocRefs(input: string): string {
+  return input.replace(/\[doc=([a-zA-Z0-9_\-.]+)\]/g, "[doc=$1](#doc/$1)");
+}
+
+// `workspace:open-doc` イベントのディスパッチ用 (id は corpus 上の doc id)。
+// 受け側は floating-workspace.tsx でリスンして selectedPath をセットする。
+export const OPEN_DOC_EVENT = "workspace:open-doc";
+export type OpenDocEventDetail = { id: string };
+
 // LLM 回答用の軽量 Markdown レンダラ。
 // @tailwindcss/typography に依存せず、必要なタグだけ手書きで色付けする。
 export function MarkdownText({ text }: Props) {
@@ -41,16 +53,41 @@ export function MarkdownText({ text }: Props) {
             <strong className="font-semibold text-slate-900">{children}</strong>
           ),
           em: ({ children }) => <em className="italic">{children}</em>,
-          a: ({ children, href }) => (
-            <a
-              href={href}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 underline hover:text-blue-700"
-            >
-              {children}
-            </a>
-          ),
+          a: ({ children, href }) => {
+            // `#doc/xxx` 形式のリンクは引用ピン。クリックで workspace パネルに
+            // 該当ファイルを開かせる (実際のナビゲーションは抑止)。
+            if (href?.startsWith("#doc/")) {
+              const id = href.slice("#doc/".length);
+              return (
+                <button
+                  type="button"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    window.dispatchEvent(
+                      new CustomEvent<OpenDocEventDetail>(OPEN_DOC_EVENT, {
+                        detail: { id },
+                      }),
+                    );
+                  }}
+                  title="Workspace パネルでこの文書を開く"
+                  className="cursor-pointer rounded border border-blue-200 bg-blue-50 px-1 font-mono text-blue-700 hover:bg-blue-100"
+                >
+                  {children}
+                </button>
+              );
+            }
+            return (
+              <a
+                href={href}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-blue-600 underline hover:text-blue-700"
+              >
+                {children}
+              </a>
+            );
+          },
           blockquote: ({ children }) => (
             <blockquote className="border-l-2 border-slate-300 pl-2 italic text-slate-600">
               {children}
@@ -86,7 +123,7 @@ export function MarkdownText({ text }: Props) {
           hr: () => <hr className="my-2 border-slate-200" />,
         }}
       >
-        {text}
+        {preprocessDocRefs(text)}
       </ReactMarkdown>
     </div>
   );
