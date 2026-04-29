@@ -81,5 +81,8 @@ export async function PATCH(request: NextRequest) {
   if (!body.id) return NextResponse.json({ error: "id required" }, { status: 400 });
   const touched = await touchWorkspace(user.id, body.id);
   if (!touched) return NextResponse.json({ error: "not found" }, { status: 404 });
+  // Workspace を開き直す機会に corpus の不足分を補充する。
+  // 後から追加されたカテゴリ (例: guideline) を既存 workspace にも反映するため。
+  await seedCorpusIntoWorkspace(body.id);
   return NextResponse.json({ workspace: publicEntry(touched) });
 }
