@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import {
   ChevronDown,
   ChevronRight,
@@ -115,23 +115,28 @@ export function FloatingWorkspaceTree({
 
   const tree = useMemo(() => buildTree(files ?? []), [files]);
 
-  // 上位フォルダを初期展開する。一度設定したら以降はユーザー操作に任せる。
+  // ツリーは畳まれた状態で開始する。ユーザーがフォルダクリックで開くか、
+  // 外部から selectedPath がセットされた時にその親フォルダだけを自動展開する。
+  // selectedPath の変化検出は React 公式の "derive state during render" パターン
+  // (https://react.dev/learn/you-might-not-need-an-effect#adjusting-some-state-when-a-prop-changes)
+  // を採用し、useEffect + setState の組み合わせは避ける。
   const [expanded, setExpanded] = useState<Set<string>>(new Set());
-  const initializedFor = useRef<string | null>(null);
-  useEffect(() => {
-    if (!files || files.length === 0) return;
-    const key = workspaceId ?? "";
-    if (initializedFor.current === key) return;
-    initializedFor.current = key;
-    const next = new Set<string>();
-    for (const f of files) {
-      const parts = f.path.split("/");
-      for (let i = 1; i < parts.length; i++) {
-        next.add(parts.slice(0, i).join("/"));
+  const [lastSelectedPath, setLastSelectedPath] = useState<string | null>(null);
+  if (selectedPath !== lastSelectedPath) {
+    setLastSelectedPath(selectedPath);
+    if (selectedPath) {
+      const parts = selectedPath.split("/");
+      if (parts.length > 1) {
+        setExpanded((prev) => {
+          const next = new Set(prev);
+          for (let i = 1; i < parts.length; i++) {
+            next.add(parts.slice(0, i).join("/"));
+          }
+          return next;
+        });
       }
     }
-    setExpanded(next);
-  }, [files, workspaceId]);
+  }
 
   const toggle = useCallback((path: string) => {
     setExpanded((prev) => {
