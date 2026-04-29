@@ -191,7 +191,7 @@ export default function FloatingTerminal({
           className="flex flex-col rounded-lg border-2 border-blue-400 bg-white shadow-2xl shadow-slate-900/20"
           style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}
         >
-          {headerBar("RAG / Agentic / Coding")}
+          {headerBar("RAG vs Agentic")}
           {!minimized && (
             <div className="relative flex-1 overflow-hidden rounded-b-lg bg-white">
               {session ? (
