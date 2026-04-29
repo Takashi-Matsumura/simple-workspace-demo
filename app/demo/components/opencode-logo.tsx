@@ -23,7 +23,8 @@ export function OpenCodeLogo({ className, showText = true }: Props) {
       </svg>
       {showText && (
         <span className="font-mono text-[12px] font-semibold tracking-tight">
-          opencode
+          <span className="text-slate-500">open</span>
+          <span className="text-blue-700">code</span>
         </span>
       )}
     </span>
