@@ -1,7 +1,15 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { ClipboardList, FileCheck2, Send, ShieldAlert, Trash2 } from "lucide-react";
+import {
+  ChevronDown,
+  ChevronRight,
+  ClipboardList,
+  FileCheck2,
+  Send,
+  ShieldAlert,
+  Trash2,
+} from "lucide-react";
 import { MarkdownText, OPEN_PATH_EVENT } from "./markdown-text";
 import type { GuidelineHit } from "../types/opencode";
 
@@ -129,6 +137,16 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
   const [savedPath, setSavedPath] = useState<string | null>(null);
   const [toolEvents, setToolEvents] = useState<GuidelineToolEvent[]>([]);
   const [stepIndex, setStepIndex] = useState(0);
+  // Step 2 中は履歴を展開、完了後は本文表示エリアを優先して自動で畳む。
+  // ユーザーが一度手動で開閉したらその状態が優先される。
+  // null = 自動 (status 駆動), boolean = 手動上書き。
+  const [toolStripOverride, setToolStripOverride] = useState<boolean | null>(
+    null,
+  );
+  const toolStripOpen =
+    toolStripOverride !== null
+      ? toolStripOverride
+      : status !== "done" && status !== "error";
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -163,6 +181,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setStepIndex(0);
+    setToolStripOverride(null);
   };
 
   // Step 2: ガイドライン照合。Step 1 で保存された path を上書き保存する。
@@ -312,6 +331,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setStepIndex(0);
+    setToolStripOverride(null);
 
     try {
       const res = await fetch("/api/report/generate", {
@@ -549,21 +569,44 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             )}
           </div>
 
-          {/* tool-call ストリップ (Step 2 のみ) */}
+          {/* tool-call ストリップ (Step 2 のみ)。完了後は折り畳んで本文エリアを確保。 */}
           {(toolEvents.length > 0 || status === "checking") && (
-            <div className="flex shrink-0 flex-col gap-1 border-b border-amber-200 bg-amber-50/40 px-3 py-1.5">
-              <div className="flex items-center gap-1.5 text-[10px] font-semibold uppercase tracking-wider text-amber-800">
+            <div className="flex shrink-0 flex-col border-b border-amber-200 bg-amber-50/40">
+              <button
+                type="button"
+                onClick={() => setToolStripOverride(!toolStripOpen)}
+                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider text-amber-800 hover:bg-amber-100/40"
+                title={toolStripOpen ? "詳細を折り畳む" : "詳細を展開する"}
+              >
+                {toolStripOpen ? (
+                  <ChevronDown className="h-3 w-3" />
+                ) : (
+                  <ChevronRight className="h-3 w-3" />
+                )}
                 <ShieldAlert className="h-3 w-3" />
-                Agentic ガイドライン検索
-              </div>
-              {toolEvents.length === 0 && status === "checking" && (
-                <div className="text-[10px] italic text-amber-700/70">
-                  検索待機中...
+                <span>Agentic ガイドライン検索</span>
+                <span className="font-mono text-[10px] font-normal text-amber-700/80">
+                  🔎{completedSearches} · 📄{completedReads} · 🖍️{recordedFindings}
+                </span>
+                {status === "checking" && (
+                  <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] font-normal">
+                    <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
+                    running
+                  </span>
+                )}
+              </button>
+              {toolStripOpen && (
+                <div className="flex max-h-48 flex-col gap-1 overflow-y-auto px-3 pb-1.5">
+                  {toolEvents.length === 0 && status === "checking" && (
+                    <div className="text-[10px] italic text-amber-700/70">
+                      検索待機中...
+                    </div>
+                  )}
+                  {toolEvents.map((ev) => (
+                    <ToolEventRow key={ev.toolCallId} ev={ev} />
+                  ))}
                 </div>
               )}
-              {toolEvents.map((ev) => (
-                <ToolEventRow key={ev.toolCallId} ev={ev} />
-              ))}
             </div>
           )}
 
