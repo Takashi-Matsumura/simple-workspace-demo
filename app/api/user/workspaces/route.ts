@@ -9,6 +9,7 @@ import {
   touchWorkspace,
   type WorkspaceEntry,
 } from "@/lib/user-store";
+import { seedCorpusIntoWorkspace } from "@/lib/opencode/seed-corpus";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -55,6 +56,8 @@ export async function POST(request: NextRequest) {
 
   const label = (body.label?.trim() || "workspace").slice(0, 80);
   const entry = await createWorkspaceEntry(user.id, label);
+  // Coding モードのファイルブラウザで最初から触れるよう、社内文書 9 件を corpus/ に seed する。
+  await seedCorpusIntoWorkspace(entry.id);
   return NextResponse.json({ workspace: publicEntry(entry) });
 }
 
