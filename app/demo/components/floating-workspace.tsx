@@ -101,7 +101,7 @@ function FloatingWorkspaceInner({
     <div
       className="absolute right-0 bottom-0 h-4 w-4 cursor-nwse-resize"
       {...resizeHandlers}
-      style={{ background: "linear-gradient(135deg, transparent 50%, rgba(15,23,42,0.55) 50%)" }}
+      style={{ background: "linear-gradient(135deg, transparent 50%, rgba(148,163,184,0.6) 50%)" }}
     />
   );
 
@@ -135,7 +135,7 @@ function FloatingWorkspaceInner({
       >
         {/* Front: workspace selector */}
         <div
-          className="flex flex-col overflow-hidden rounded-lg border-2 border-slate-900 bg-white shadow-2xl shadow-slate-900/20"
+          className="flex flex-col overflow-hidden rounded-lg border-2 border-slate-400 bg-white shadow-2xl shadow-slate-900/20"
           style={{ position: "absolute", inset: 0, backfaceVisibility: "hidden" }}
         >
           <FloatingWorkspaceHeader
@@ -172,7 +172,7 @@ function FloatingWorkspaceInner({
 
         {/* Back: settings */}
         <div
-          className="flex flex-col overflow-hidden rounded-lg border-2 border-slate-900 bg-white shadow-2xl shadow-slate-900/20"
+          className="flex flex-col overflow-hidden rounded-lg border-2 border-slate-400 bg-white shadow-2xl shadow-slate-900/20"
           style={{
             position: "absolute",
             inset: 0,
