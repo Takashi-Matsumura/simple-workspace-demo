@@ -148,21 +148,6 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           </span>
         </div>
 
-        {/* プリセット */}
-        <div className="flex shrink-0 flex-wrap gap-1.5 border-b border-slate-200 bg-white px-3 py-1.5">
-          {PRESETS_BY_MODE[mode].map((p) => (
-            <button
-              key={p.label}
-              type="button"
-              onClick={() => setInput(p.text)}
-              disabled={busy}
-              className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
-            >
-              {p.label}
-            </button>
-          ))}
-        </div>
-
         {/* メッセージ履歴 */}
         <div
           ref={scrollRef}
@@ -191,6 +176,21 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           )}
           {messages.map((m) => (
             <MessageView key={m.id} message={m} mode={mode} />
+          ))}
+        </div>
+
+        {/* プリセット (入力フォームの直上) */}
+        <div className="flex shrink-0 flex-wrap gap-1.5 border-t border-slate-200 bg-white px-3 py-1.5">
+          {PRESETS_BY_MODE[mode].map((p) => (
+            <button
+              key={p.label}
+              type="button"
+              onClick={() => setInput(p.text)}
+              disabled={busy}
+              className="rounded-full border border-slate-300 bg-slate-50 px-2.5 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+            >
+              {p.label}
+            </button>
           ))}
         </div>
 
