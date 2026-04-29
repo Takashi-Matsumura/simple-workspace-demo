@@ -85,7 +85,7 @@ export default function FloatingTerminal({
   // ヘッダーは表/裏共通。ライトテーマ + opencode ロゴ。
   const headerBar = (sublabel: string) => (
     <div
-      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-slate-200 bg-slate-50 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
+      className="flex h-9 cursor-grab items-center gap-2 rounded-t-lg border-b border-blue-200 bg-blue-50 px-3 text-xs text-slate-600 active:cursor-grabbing select-none"
       {...headerHandlers}
     >
       <div className="flex items-center gap-1.5">
