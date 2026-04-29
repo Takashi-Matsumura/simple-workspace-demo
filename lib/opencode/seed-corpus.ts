@@ -18,13 +18,21 @@ function pathFor(doc: Doc): string {
 }
 
 // 新規 workspace 作成時に corpus 9 件を corpus/{category}/{id}.md として書き込む。
-// 失敗しても workspace 自体は使えるよう、エラーは伝播せずに無視する。
+// 失敗しても workspace 自体は使えるよう、エラーは伝播せずにログだけ残す。
 export async function seedCorpusIntoWorkspace(workspaceId: string): Promise<void> {
+  let success = 0;
   for (const doc of CORPUS) {
     try {
       await writeWorkspaceFile(workspaceId, pathFor(doc), docToMarkdown(doc));
-    } catch {
-      // 個別ファイルの失敗は握り潰す (容量超過などの想定外を想定)
+      success++;
+    } catch (e) {
+      console.error(
+        `[seed-corpus] failed for ${doc.id} in ${workspaceId}:`,
+        (e as Error).message,
+      );
     }
   }
+  console.log(
+    `[seed-corpus] seeded ${success}/${CORPUS.length} docs into ${workspaceId}`,
+  );
 }
