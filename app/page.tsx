@@ -3,11 +3,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
-import { Loader2, ZoomIn, ZoomOut, Layers, Folder } from "lucide-react";
+import {
+  Loader2,
+  ZoomIn,
+  ZoomOut,
+  Layers,
+  Folder,
+  TerminalSquare,
+} from "lucide-react";
 import type { View, CanvasActions } from "./demo/components/whiteboard-canvas";
 import type { Workspace } from "./demo/components/floating-workspace";
 import { AccountBadge } from "./demo/components/account-badge";
 import { usePanels } from "./demo/hooks/use-panels";
+import { useSandboxToggle } from "./demo/hooks/use-sandbox-toggle";
 import { TERMINAL_PANEL_DEFINITIONS } from "./demo/config/terminal-panels";
 import type { TerminalPanelId } from "./demo/types/panels";
 
@@ -23,6 +31,10 @@ const FloatingWorkspace = dynamic(
   () => import("./demo/components/floating-workspace"),
   { ssr: false },
 );
+const FloatingShell = dynamic(
+  () => import("./demo/components/floating-shell"),
+  { ssr: false },
+);
 
 export default function Home() {
   const router = useRouter();
@@ -34,6 +46,8 @@ export default function Home() {
   // クライアント側で /api/auth/me を呼んで user が null なら /login へ送る。
   const [authState, setAuthState] = useState<"loading" | "authed">("loading");
   const panels = usePanels();
+  const sandbox = useSandboxToggle();
+  const [shellRestartNonce, setShellRestartNonce] = useState(0);
 
   useEffect(() => {
     let cancelled = false;
@@ -54,6 +68,54 @@ export default function Home() {
       cancelled = true;
     };
   }, [router]);
+
+  // 認証直後に GET /api/shell でサーバ側のコンテナ状態を読み、
+  // localStorage のトグルとサーバの networkMode を一致させる (サーバが正)。
+  useEffect(() => {
+    if (authState !== "authed") return;
+    let cancelled = false;
+    fetch("/api/shell")
+      .then((r) => r.json())
+      .then((data: { networkMode?: "none" | "bridge" | null }) => {
+        if (cancelled) return;
+        if (data.networkMode === "none" && !sandbox.enabled) sandbox.setEnabled(true);
+        else if (data.networkMode === "bridge" && sandbox.enabled) sandbox.setEnabled(false);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+    // 初回のみで OK。トグル変化時の同期は別経路で扱う。
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [authState]);
+
+  // Sandbox トグル変化 → コンテナを再生成して network mode を切替。
+  // トグル UI の onClick は ON/OFF を反転させて即この処理を呼ぶ。
+  const applySandboxMode = useCallback(
+    async (next: boolean) => {
+      try {
+        await fetch("/api/shell", {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({
+            action: "restart",
+            networkMode: next ? "none" : "bridge",
+          }),
+        });
+        // Shell パネルが開いていたら再接続を促す (旧コンテナの WS が閉じるので)
+        setShellRestartNonce((n) => n + 1);
+      } catch (err) {
+        console.error("[shell] restart failed:", err);
+      }
+    },
+    [],
+  );
+
+  const handleToggleSandbox = useCallback(() => {
+    const next = !sandbox.enabled;
+    sandbox.setEnabled(next);
+    void applySandboxMode(next);
+  }, [sandbox, applySandboxMode]);
 
   // ワークスペース切替時はパネル内のセッションも一緒にクリアする。
   const handleWorkspaceChange = useCallback(
@@ -103,6 +165,8 @@ export default function Home() {
         onZoomToFit={(rect) => canvasRef.current?.zoomToRect(rect)}
         z={panels.zFor("workspace")}
         onFocus={() => panels.bringToFront("workspace")}
+        sandboxEnabled={sandbox.enabled}
+        onToggleSandbox={handleToggleSandbox}
       />
       {TERMINAL_PANEL_DEFINITIONS.map((def) => {
         const session = panels.sessions.get(def.id);
@@ -121,6 +185,17 @@ export default function Home() {
           />
         );
       })}
+      {panels.shellOpen && (
+        <FloatingShell
+          view={view}
+          onStop={() => panels.closeShell()}
+          onZoomToFit={(rect) => canvasRef.current?.zoomToRect(rect)}
+          z={panels.zFor("shell")}
+          onFocus={() => panels.bringToFront("shell")}
+          restartNonce={shellRestartNonce}
+          sandboxEnabled={sandbox.enabled}
+        />
+      )}
       <footer className="fixed right-0 bottom-0 left-0 z-[60] flex h-8 items-center justify-center gap-1 border-t border-slate-200 bg-white/90 backdrop-blur-sm">
         <div className="absolute inset-y-0 left-2 flex items-center gap-2">
           <PanelSwitcherButton
@@ -145,6 +220,23 @@ export default function Home() {
               </PanelSwitcherButton>
             ) : null,
           )}
+          <PanelSwitcherButton
+            active={panels.shellOpen && panels.frontPanel === "shell"}
+            onClick={() =>
+              panels.shellOpen
+                ? panels.bringToFront("shell")
+                : panels.openShell()
+            }
+            label="Shell"
+            title={
+              panels.shellOpen
+                ? "Shell パネルを最前面に"
+                : "Shell パネルを開く"
+            }
+            accent="#a855f7"
+          >
+            <TerminalSquare className="h-3 w-3" />
+          </PanelSwitcherButton>
         </div>
         <button
           type="button"
