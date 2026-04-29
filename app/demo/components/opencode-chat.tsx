@@ -14,7 +14,11 @@ import {
   Trash2,
   FolderOpen,
   FileText,
+  Brain,
+  ChevronDown,
+  ChevronRight,
 } from "lucide-react";
+import { MarkdownText } from "./markdown-text";
 import type {
   DeleteFilePart,
   ListFilesPart,
@@ -288,13 +292,14 @@ function MessageView({
       {mode === "rag" && retrieved && <RetrievedList hits={retrieved} />}
       {message.parts.map((part, i) => {
         if (part.type === "text") {
+          return <MarkdownText key={i} text={part.text} />;
+        }
+        if (part.type === "reasoning") {
           return (
-            <div
+            <ReasoningView
               key={i}
-              className="whitespace-pre-wrap leading-relaxed text-slate-800"
-            >
-              {part.text}
-            </div>
+              text={(part as unknown as { text: string }).text ?? ""}
+            />
           );
         }
         if (part.type === "step-start" && i > 0) {
@@ -338,6 +343,36 @@ function MessageView({
         }
         return null;
       })}
+    </div>
+  );
+}
+
+function ReasoningView({ text }: { text: string }) {
+  // 思考過程は長くなりがちなので、デフォルトで折りたたんで表示する。
+  const [open, setOpen] = useState(true);
+  return (
+    <div className="rounded border border-slate-300 bg-slate-50">
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        className="flex w-full items-center gap-1.5 px-2 py-1 text-left text-slate-500 hover:bg-slate-100"
+      >
+        {open ? (
+          <ChevronDown className="h-3 w-3" />
+        ) : (
+          <ChevronRight className="h-3 w-3" />
+        )}
+        <Brain className="h-3 w-3" />
+        <span className="font-medium">Thinking</span>
+        <span className="ml-auto font-mono text-[10px] text-slate-400">
+          {text.length} chars
+        </span>
+      </button>
+      {open && (
+        <div className="whitespace-pre-wrap border-t border-slate-200 px-2 py-1 italic text-slate-500">
+          {text}
+        </div>
+      )}
     </div>
   );
 }
