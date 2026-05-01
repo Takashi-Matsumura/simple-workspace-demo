@@ -443,14 +443,18 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           </div>
 
           <div className="flex flex-wrap items-center gap-1.5">
-            <label className="flex items-center gap-1 text-[11px] text-slate-500">
+            <label
+              className="flex items-center gap-1 text-slate-500"
+              style={{ fontSize: "0.92em" }}
+            >
               訪問日
               <input
                 type="date"
                 value={visitDate}
                 onChange={(e) => setVisitDate(e.target.value)}
                 disabled={busy}
-                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-[11px] text-slate-700 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+                className="rounded border border-slate-300 bg-white px-1.5 py-0.5 text-slate-700 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+                style={{ fontSize: "0.92em" }}
               />
             </label>
             <input
@@ -459,7 +463,8 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
               value={helperName}
               onChange={(e) => setHelperName(e.target.value)}
               disabled={busy}
-              className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+              className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+              style={{ fontSize: "0.92em" }}
             />
             <input
               type="text"
@@ -467,7 +472,8 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
               value={guestName}
               onChange={(e) => setGuestName(e.target.value)}
               disabled={busy}
-              className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+              className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+              style={{ fontSize: "0.92em" }}
             />
           </div>
 
@@ -477,7 +483,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             onChange={(e) => setFreeText(e.target.value)}
             disabled={busy}
             placeholder="今日の訪問について自由に書いてください..."
-            className="min-h-[10rem] flex-1 resize-none rounded border border-slate-300 bg-white px-2 py-1.5 text-[12px] leading-relaxed text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
+            className="min-h-[10rem] flex-1 resize-none rounded border border-slate-300 bg-white px-2 py-1.5 leading-relaxed text-slate-700 placeholder:text-slate-400 focus:border-teal-400 focus:outline-none disabled:opacity-50"
           />
 
           <div className="flex flex-wrap items-center gap-1.5">
