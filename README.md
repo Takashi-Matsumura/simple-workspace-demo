@@ -107,11 +107,22 @@ docker compose down -v
 | マイグレーション | `entrypoint.sh` で `prisma migrate deploy` を毎回実行 (idempotent) |
 | LLM 接続 | 既定で `http://host.docker.internal:8080/v1` を参照。ホスト側 llama.cpp に接続する想定。Linux でも `extra_hosts` で host-gateway を解決 |
 
+### Colima を使う場合 (Mac Studio など)
+
+Docker Desktop と違い Colima では socket が `/var/run/docker.sock` ではなく `~/.colima/default/docker.sock` にあります。`.env` に以下を追加して compose の bind mount ソースを切り替えてください:
+
+```bash
+HOST_DOCKER_SOCK="/Users/<you>/.colima/default/docker.sock"
+```
+
+socket の実パスは `docker context inspect | jq '.[0].Endpoints.docker.Host'` で確認できます (`unix://` は外して指定)。
+
 ### Docker デプロイ時の注意
 
-- **Sandbox 機能を有効にするにはホスト Docker daemon の socket を共有している**ため、アプリコンテナが RCE された場合の影響範囲はローカル開発時と変わらず大きい。LAN 公開や公開ホストでの運用は引き続き非推奨です
-- macOS (Docker Desktop / OrbStack) を主な検証対象としています。Colima や Linux ホストでは socket パスや権限が異なる場合があるため、必要に応じて `docker-compose.yml` の `volumes:` を書き換えてください
+- **Sandbox 機能はホスト Docker daemon の socket を共有することで実現している**ため、アプリコンテナが RCE された場合の影響範囲はローカル開発時と変わらず大きい。LAN 公開や公開ホストでの運用は引き続き非推奨です
+- アプリは `dockerode` (Docker REST API クライアント) を使うため、コンテナ内に `docker` CLI を入れる必要はありません。socket がマウントされていれば dockerode → ホスト daemon → ホスト上で sandbox コンテナが立ち上がります
 - Sandbox 用イメージ (`simple-workspace-sandbox:dev`) は **アプリコンテナ内では build できません** (アプリは `docker build` を呼ばない)。事前にホストで `npm run sandbox:build` を実行しておく必要があります
+- イメージ内に `python3` / `make` / `g++` を入れているのは Docker 制御のためではなく、`better-sqlite3` のネイティブモジュールをコンテナ内 (Linux) でビルドし直すためです
 
 ## ディレクトリ構成
 

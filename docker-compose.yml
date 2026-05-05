@@ -43,7 +43,9 @@ services:
       SANDBOX_DOCKER_SOCKET: /var/run/docker.sock
     volumes:
       # ホスト Docker daemon (sandbox コンテナ払い出し用) — RCE 時の影響範囲が大きい点に注意。
-      - /var/run/docker.sock:/var/run/docker.sock
+      # Docker Desktop なら既定の /var/run/docker.sock で OK。
+      # Colima を使う場合は .env で HOST_DOCKER_SOCK=/Users/<you>/.colima/default/docker.sock を設定。
+      - ${HOST_DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
       # SQLite DB の永続化。
       - app-data:/data
     extra_hosts:
