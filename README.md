@@ -75,6 +75,44 @@ npm run dev
 
 OpenCode / レポート生成パネルを実際に動かすには、ローカルの **llama.cpp サーバ**を `http://localhost:8080` で起動しておくか、`LLAMA_BASE_URL` を別の OpenAI 互換エンドポイントに切り替えてください。
 
+## Docker デプロイ
+
+ローカル / 自分のマシン上での運用向けに、`Dockerfile` + `docker-compose.yml` を同梱しています。アプリ本体を Node 22 ベースのコンテナに載せ、ホストの Docker daemon を bind mount することで **Sandbox Shell 機能ごと** デプロイできます。
+
+```bash
+# 1. .env を本番値で用意 (SESSION_SECRET は 32 文字以上のランダム値に必ず差し替え)
+cp .env.example .env
+# vi .env  ← SESSION_SECRET を編集
+
+# 2. Sandbox Shell 用イメージをホスト側でビルド (アプリコンテナ内では build しない)
+npm run sandbox:build
+
+# 3. アプリコンテナをビルド & 起動
+docker compose up -d --build
+# → http://localhost:8050 でアクセス
+
+# 停止 (DB volume は残す)
+docker compose down
+# DB ごと完全に破棄
+docker compose down -v
+```
+
+### compose 構成の要点
+
+| 項目 | 値 / 備考 |
+| --- | --- |
+| 公開ポート | **8050** (ホスト) → 8050 (コンテナ内 `HOST=0.0.0.0`) |
+| SQLite DB | named volume `simple-workspace-app-data` を `/data` にマウント (`DATABASE_URL=file:/data/dev.db`)。コンテナ再作成しても永続 |
+| Docker socket | `/var/run/docker.sock` を bind mount。アプリが dockerode でホスト daemon に sandbox コンテナを払い出すため必須 |
+| マイグレーション | `entrypoint.sh` で `prisma migrate deploy` を毎回実行 (idempotent) |
+| LLM 接続 | 既定で `http://host.docker.internal:8080/v1` を参照。ホスト側 llama.cpp に接続する想定。Linux でも `extra_hosts` で host-gateway を解決 |
+
+### Docker デプロイ時の注意
+
+- **Sandbox 機能を有効にするにはホスト Docker daemon の socket を共有している**ため、アプリコンテナが RCE された場合の影響範囲はローカル開発時と変わらず大きい。LAN 公開や公開ホストでの運用は引き続き非推奨です
+- macOS (Docker Desktop / OrbStack) を主な検証対象としています。Colima や Linux ホストでは socket パスや権限が異なる場合があるため、必要に応じて `docker-compose.yml` の `volumes:` を書き換えてください
+- Sandbox 用イメージ (`simple-workspace-sandbox:dev`) は **アプリコンテナ内では build できません** (アプリは `docker build` を呼ばない)。事前にホストで `npm run sandbox:build` を実行しておく必要があります
+
 ## ディレクトリ構成
 
 ```
@@ -203,7 +241,7 @@ npm run dev
 
 ### 注意 (重要)
 
-- **本デモはローカル開発用途のみ**です。`server.ts` は既定で `127.0.0.1` バインドで起動します。LAN や公開ホストでこのアプリを起動しないでください
+- **本デモはローカル開発用途のみ**です。`server.ts` は既定で `127.0.0.1` バインドで起動します (Docker compose 経由では `HOST=0.0.0.0` で `8050` を公開)。いずれの場合も LAN や公開ホストにそのまま晒さないでください
 - ホストの Docker socket をプロセスに共有しているため、Node プロセスを RCE されたらホスト root と同等のリスクがあります
 - アイドル停止は未実装 (`SANDBOX_IDLE_STOP_MS` は予約のみ)。最後のログアウトで stop されるまでコンテナは `sleep infinity` で常駐します
 - 不要になったリソースは `docker ps -a --filter label=app=simple-workspace-demo` / `docker volume ls --filter label=app=simple-workspace-demo` で確認し、`docker rm -f` / `docker volume rm` で掃除してください (退会機能は v1 では未実装)
