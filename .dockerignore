@@ -1,0 +1,27 @@
+node_modules
+.next
+.git
+.gitignore
+.env
+.env.*
+!.env.example
+*.log
+npm-debug.log*
+
+# build artifacts / IDE
+*.tsbuildinfo
+next-env.d.ts
+.vscode
+.idea
+.DS_Store
+
+# local DB / data
+prisma/*.db
+prisma/*.db-journal
+prisma/migrations/dev.db*
+
+# docs / repo meta
+README.md
+LICENSE
+AGENTS.md
+CLAUDE.md

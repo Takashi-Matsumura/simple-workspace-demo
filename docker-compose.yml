@@ -1,0 +1,57 @@
+# simple-workspace-demo を Docker でデプロイする最小構成。
+#
+# 前提:
+# 1. ホストの Docker daemon (Docker Desktop / OrbStack / Colima) が稼働していること。
+#    アプリは dockerode 経由でホストの daemon を叩いてユーザごとの sandbox コンテナを払い出すため、
+#    /var/run/docker.sock を bind mount している。
+# 2. Sandbox 用イメージは事前にホスト側でビルドしておく:
+#       npm run sandbox:build
+#    (アプリコンテナ内では docker build を実行しない)
+# 3. .env を用意し、SESSION_SECRET を本番用のランダム値に差し替えておくこと。
+#
+# 起動:
+#   docker compose up -d --build
+# 停止:
+#   docker compose down            # コンテナのみ削除 (DB volume は残る)
+#   docker compose down -v         # DB volume も含めて全削除
+
+name: simple-workspace-demo
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: simple-workspace-demo:latest
+    container_name: simple-workspace-app
+    restart: unless-stopped
+    ports:
+      - "8050:8050"
+    environment:
+      HOST: 0.0.0.0
+      PORT: "8050"
+      NODE_ENV: production
+      # SQLite DB は volume 上に置く (コンテナ再作成しても永続)。
+      DATABASE_URL: "file:/data/dev.db"
+      SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env (32+ random chars)}
+      # OpenCode / レポート生成用 LLM。ホスト側 llama.cpp を使う場合は host.docker.internal で参照。
+      LLAMA_BASE_URL: ${LLAMA_BASE_URL:-http://host.docker.internal:8080/v1}
+      LLAMA_MODEL: ${LLAMA_MODEL:-gemma}
+      LLAMA_API_KEY: ${LLAMA_API_KEY:-not-needed}
+      # Sandbox 機能: ホストの daemon を共有する。socket は下の volumes で bind mount 済み。
+      SANDBOX_IMAGE: ${SANDBOX_IMAGE:-simple-workspace-sandbox:dev}
+      SANDBOX_DOCKER_SOCKET: /var/run/docker.sock
+    volumes:
+      # ホスト Docker daemon (sandbox コンテナ払い出し用) — RCE 時の影響範囲が大きい点に注意。
+      # Docker Desktop なら既定の /var/run/docker.sock で OK。
+      # Colima を使う場合は .env で HOST_DOCKER_SOCK=/Users/<you>/.colima/default/docker.sock を設定。
+      - ${HOST_DOCKER_SOCK:-/var/run/docker.sock}:/var/run/docker.sock
+      # SQLite DB の永続化。
+      - app-data:/data
+    extra_hosts:
+      # Linux ホストでも host.docker.internal を有効化 (Docker Desktop / OrbStack は不要だが付けても害はない)。
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  app-data:
+    name: simple-workspace-app-data
