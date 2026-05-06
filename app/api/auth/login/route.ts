@@ -16,7 +16,7 @@ export const dynamic = "force-dynamic";
 // Docker 不調 (daemon 未起動 / image 未ビルド等) でもログイン自体は成功させる。
 // 既存ユーザが再ログインしただけのときは ensureContainer が冪等に既存を返す。
 function ensureUserContainer(userId: string): void {
-  ensureContainer(userId, { networkMode: "bridge" }).catch((err: unknown) => {
+  ensureContainer(userId, { networkMode: "none" }).catch((err: unknown) => {
     console.warn(
       `[auth] ensureContainer failed for user ${userId}:`,
       err instanceof Error ? err.message : err,

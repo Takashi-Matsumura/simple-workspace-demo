@@ -15,7 +15,7 @@ export const dynamic = "force-dynamic";
 const USERNAME_RE = /^[a-zA-Z0-9_.-]{3,32}$/;
 
 function ensureUserContainer(userId: string): void {
-  ensureContainer(userId, { networkMode: "bridge" }).catch((err: unknown) => {
+  ensureContainer(userId, { networkMode: "none" }).catch((err: unknown) => {
     console.warn(
       `[auth] ensureContainer failed for user ${userId}:`,
       err instanceof Error ? err.message : err,

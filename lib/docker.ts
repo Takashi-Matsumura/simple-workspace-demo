@@ -1,6 +1,7 @@
 import Docker from "dockerode";
 import type { Duplex } from "node:stream";
 import { sanitizeSub } from "./user";
+import { readSandboxLimits } from "./sandbox-limits";
 
 const SOCKET_PATH = process.env.SANDBOX_DOCKER_SOCKET ?? "/var/run/docker.sock";
 const SANDBOX_IMAGE = process.env.SANDBOX_IMAGE ?? "simple-workspace-sandbox:dev";
@@ -141,7 +142,7 @@ export async function ensureContainer(
   userId: string,
   options: { networkMode?: NetworkMode } = {},
 ): Promise<Docker.Container> {
-  const desiredMode: NetworkMode = options.networkMode ?? "bridge";
+  const desiredMode: NetworkMode = options.networkMode ?? "none";
   await ensureImage();
   const info = await findContainer(userId);
   if (info) {
@@ -171,6 +172,7 @@ export async function ensureContainer(
       AutoRemove: false,
       RestartPolicy: { Name: "no" },
       NetworkMode: desiredMode,
+      ...readSandboxLimits(),
     },
   });
   await c.start();
