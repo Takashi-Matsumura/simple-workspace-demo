@@ -17,7 +17,18 @@ function ensureUserContainer(userId: string): void {
   });
 }
 
+function registrationAllowed(): boolean {
+  return process.env.ALLOW_REGISTRATION === "true";
+}
+
 export async function POST(request: NextRequest) {
+  if (!registrationAllowed()) {
+    return NextResponse.json(
+      { error: "新規登録は現在受け付けていません" },
+      { status: 403 },
+    );
+  }
+
   const body = (await request.json().catch(() => ({}))) as {
     username?: string;
     password?: string;
