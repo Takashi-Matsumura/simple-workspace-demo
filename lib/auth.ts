@@ -83,13 +83,24 @@ export async function resolveSessionCookie(
   return { id: row.user.id, username: row.user.username };
 }
 
+// Cookie の `Secure` 属性は HTTPS でしかブラウザが受け入れないため、
+// HTTPS 終端のない LAN デプロイ (例: http://<host>.local:8050) では
+// COOKIE_SECURE=false を指定して明示的に外せるようにする。
+// 既定 (auto) は本番ビルド時に Secure を付ける従来挙動。
+function shouldUseSecureCookie(): boolean {
+  const flag = process.env.COOKIE_SECURE?.toLowerCase();
+  if (flag === "true") return true;
+  if (flag === "false") return false;
+  return process.env.NODE_ENV === "production";
+}
+
 export function cookieHeader(
   name: string,
   value: string,
   options: { maxAgeMs?: number; expiresAt?: Date; clear?: boolean } = {},
 ): string {
   const parts: string[] = [`${name}=${value}`, "Path=/", "HttpOnly", "SameSite=Lax"];
-  if (process.env.NODE_ENV === "production") parts.push("Secure");
+  if (shouldUseSecureCookie()) parts.push("Secure");
   if (options.clear) {
     parts.push("Max-Age=0");
   } else if (options.expiresAt) {
