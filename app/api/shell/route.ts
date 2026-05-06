@@ -70,9 +70,9 @@ export async function POST(request: NextRequest) {
 
     if (action === "restart") {
       // 既存があれば削除して指定 mode で再作成。Volume は維持。
-      await recreateContainer(user.id, { networkMode: desiredMode ?? "bridge" });
+      await recreateContainer(user.id, { networkMode: desiredMode ?? "none" });
     } else if (action === "start") {
-      await ensureContainer(user.id, { networkMode: desiredMode ?? "bridge" });
+      await ensureContainer(user.id, { networkMode: desiredMode ?? "none" });
     } else {
       return NextResponse.json({ error: "invalid_action" }, { status: 400 });
     }

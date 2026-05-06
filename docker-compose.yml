@@ -40,9 +40,16 @@ services:
       LLAMA_BASE_URL: ${LLAMA_BASE_URL:-http://host.docker.internal:8080/v1}
       LLAMA_MODEL: ${LLAMA_MODEL:-gemma}
       LLAMA_API_KEY: ${LLAMA_API_KEY:-not-needed}
+      # 新規登録 API ガード。"true" 以外は /api/auth/register が 403 を返す (既定: 閉鎖)。
+      ALLOW_REGISTRATION: ${ALLOW_REGISTRATION:-}
       # Sandbox 機能: ホストの daemon を共有する。socket は下の volumes で bind mount 済み。
       SANDBOX_IMAGE: ${SANDBOX_IMAGE:-simple-workspace-sandbox:dev}
       SANDBOX_DOCKER_SOCKET: /var/run/docker.sock
+      # Sandbox コンテナのリソース上限。未指定時は lib/sandbox-limits.ts の既定値
+      # (CPU 1.0 / Mem 1GiB / PIDs 256)。
+      SANDBOX_CPUS: ${SANDBOX_CPUS:-}
+      SANDBOX_MEMORY: ${SANDBOX_MEMORY:-}
+      SANDBOX_PIDS: ${SANDBOX_PIDS:-}
     volumes:
       # ホスト Docker daemon (sandbox コンテナ払い出し用) — RCE 時の影響範囲が大きい点に注意。
       # Docker Desktop なら既定の /var/run/docker.sock で OK。
