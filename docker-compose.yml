@@ -34,6 +34,8 @@ services:
       # SQLite DB は volume 上に置く (コンテナ再作成しても永続)。
       DATABASE_URL: "file:/data/dev.db"
       SESSION_SECRET: ${SESSION_SECRET:?SESSION_SECRET must be set in .env (32+ random chars)}
+      # Cookie の Secure 属性制御。HTTPS 終端のない LAN デプロイでは .env で "false" を指定する。
+      COOKIE_SECURE: ${COOKIE_SECURE:-}
       # OpenCode / レポート生成用 LLM。ホスト側 llama.cpp を使う場合は host.docker.internal で参照。
       LLAMA_BASE_URL: ${LLAMA_BASE_URL:-http://host.docker.internal:8080/v1}
       LLAMA_MODEL: ${LLAMA_MODEL:-gemma}
