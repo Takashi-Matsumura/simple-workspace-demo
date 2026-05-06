@@ -18,6 +18,10 @@ RUN npm ci
 
 # ソース投入 → Next.js ビルド
 COPY . .
+# Next.js 16 は build 時の "Collecting page data" で実 import を走らせるため、
+# Prisma を初期化する route が DATABASE_URL を要求する。実 DB は不要なのでビルド用ダミー値を渡す。
+ENV DATABASE_URL="file:/tmp/build-placeholder.db" \
+    SESSION_SECRET="build-time-placeholder-secret-not-used-at-runtime"
 RUN npx next build
 
 # ---------- Stage 2: runtime ----------
