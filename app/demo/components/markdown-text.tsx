@@ -159,7 +159,11 @@ function HighlightMark({ children }: { children?: ReactNode }) {
   }
   return (
     <mark
-      className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900"
+      // 確認事項カードからこの id を target にスムーズスクロールする。
+      // scroll-mt は中央ペインの sticky ヘッダ (整形プレビューバー) に
+      // 隠れないためのオフセット。
+      id={badge ? `finding-${badge}` : undefined}
+      className="rounded bg-yellow-200 px-1 py-0.5 font-semibold text-slate-900 scroll-mt-12"
       style={{ boxShadow: "0 0 0 1px rgba(202, 138, 4, 0.25)" }}
       title="人間の確認が必要な箇所 (Step 2 で抽出)"
     >
