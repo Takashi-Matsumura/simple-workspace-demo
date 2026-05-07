@@ -252,9 +252,14 @@ ${originalBody.trim()}`;
       // これでクライアント側の追加 fetch やタイミング問題なく previewText を
       // 確定できる。
       if (part.type === "finish") {
+        // クライアントは previewBody (末尾セクション無し) を整形プレビューに、
+        // findings (構造化) を確認事項ペインに表示する。finalContent は
+        // 互換のため残す (既存のファイル保存内容と同一文字列)。
         return {
           mode: "guideline-check" as const,
+          previewBody: annotateBody(originalBody, findings),
           finalContent: assembleReport(originalBody, findings),
+          findings,
           findingsCount: findings.length,
         };
       }
