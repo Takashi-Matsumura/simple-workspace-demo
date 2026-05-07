@@ -67,12 +67,21 @@ export function FindingsPanel({ findings, status }: Props) {
 }
 
 function FindingCard({ f, onClick }: { f: Finding; onClick: () => void }) {
+  // 内部に doc チップ (button) をネストするので outer は div + role="button"。
+  // <button> in <button> は HTML 仕様違反でハイドレーション失敗を起こす。
   return (
-    <button
-      type="button"
+    <div
+      role="button"
+      tabIndex={0}
       onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === "Enter" || e.key === " ") {
+          e.preventDefault();
+          onClick();
+        }
+      }}
       title="本文の該当箇所にジャンプ"
-      className="w-full rounded border border-amber-200 bg-white px-2.5 py-2 text-left transition-colors hover:bg-amber-50"
+      className="w-full cursor-pointer rounded border border-amber-200 bg-white px-2.5 py-2 text-left transition-colors hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
     >
       <div className="flex items-start gap-2">
         <span className="mt-0.5 inline-flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
@@ -102,7 +111,7 @@ function FindingCard({ f, onClick }: { f: Finding; onClick: () => void }) {
           )}
         </div>
       </div>
-    </button>
+    </div>
   );
 }
 
