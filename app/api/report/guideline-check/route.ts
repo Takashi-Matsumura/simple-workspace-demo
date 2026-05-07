@@ -35,7 +35,7 @@ type Finding = {
   citations: string[];
 };
 
-const MAX_FINDINGS = 6;
+const MAX_FINDINGS = 4;
 
 // 原本本文と findings から最終 Markdown を決定論的に組み立てる。
 // - 各 finding の sentenceText を 1 回だけ **...** で囲む (原文に存在しない場合はスキップ)
@@ -90,7 +90,7 @@ export async function POST(req: Request) {
         query: z.string().describe("検索キーワード (短く具体的に)"),
       }),
       execute: async ({ query }) => {
-        const hits = searchCorpus(query, 4, "guideline");
+        const hits = searchCorpus(query, 2, "guideline");
         return {
           query,
           hits: hits.map((h) => ({
@@ -123,7 +123,7 @@ export async function POST(req: Request) {
     }),
     recordFinding: tool({
       description:
-        "確認が必要な箇所を 1 件記録する。元レポート本文に文字通り存在する一文 (句点まで) を sentenceText に渡す。最大 6 件。同じ sentenceText を 2 度記録しない。",
+        "確認が必要な箇所を 1 件記録する。元レポート本文に文字通り存在する一文 (句点まで) を sentenceText に渡す。最大 4 件。同じ sentenceText を 2 度記録しない。",
       inputSchema: z.object({
         sentenceText: z
           .string()
@@ -149,7 +149,7 @@ export async function POST(req: Request) {
       }),
       execute: async ({ sentenceText, label, reason, citations }) => {
         if (findings.length >= MAX_FINDINGS) {
-          return { ok: false as const, error: "max findings reached (6)" };
+          return { ok: false as const, error: "max findings reached (4)" };
         }
         // LLM がしばしば付けてしまう箇条書きマーカ・前後空白・全角空白を取り除いて
         // 本文と照合する。それでも一致しなければ、近そうな行を hint で返して
@@ -224,8 +224,9 @@ ${originalBody.trim()}`;
     prompt: userPrompt,
     tools,
     // step 数 = LLM 呼び出し回数 (各 tool 呼び出しごとに 1 step 消費)。
-    // search 3 + read 3 + recordFinding 6 + α を見込んで 16 に設定。
-    stopWhen: stepCountIs(16),
+    // search 2 + read 2 + recordFinding 4 + α を見込んで 10 に設定。
+    // 上限到達 = 暴走の早期打ち切りなので、通常時の挙動は変わらない。
+    stopWhen: stepCountIs(10),
     onFinish: async () => {
       try {
         const finalContent = assembleReport(originalBody, findings);
