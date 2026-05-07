@@ -26,16 +26,16 @@ function scrollToFinding(index: number) {
 export function FindingsPanel({ findings, status }: Props) {
   return (
     <div className="flex h-full min-w-0 flex-col">
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-amber-200 bg-amber-50/60 px-3 py-1 text-[11px] font-semibold text-amber-800">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-amber-200 bg-amber-50/60 px-3 py-1 text-[0.75em] font-semibold text-amber-800">
         <ShieldAlert className="h-3 w-3" />
         <span>確認事項</span>
         {findings.length > 0 && (
-          <span className="font-mono text-[10px] text-amber-700/80">
+          <span className="font-mono text-[0.7em] text-amber-700/80">
             ({findings.length})
           </span>
         )}
         {status === "checking" && (
-          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] font-normal">
+          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[0.7em] font-normal">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
             running
           </span>
@@ -84,19 +84,19 @@ function FindingCard({ f, onClick }: { f: Finding; onClick: () => void }) {
       className="w-full cursor-pointer rounded border border-amber-200 bg-white px-2.5 py-2 text-left transition-colors hover:bg-amber-50 focus:outline-none focus-visible:ring-2 focus-visible:ring-amber-400"
     >
       <div className="flex items-start gap-2">
-        <span className="mt-0.5 inline-flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-amber-600 px-1 text-[10px] font-bold leading-none text-white">
+        <span className="mt-0.5 inline-flex h-4 min-w-[1rem] shrink-0 items-center justify-center rounded-full bg-amber-600 px-1 text-[0.7em] font-bold leading-none text-white">
           {f.index}
         </span>
         <div className="min-w-0 flex-1">
           <div className="font-semibold text-amber-900">{f.label}</div>
 
-          <div className="mt-1 rounded border-l-2 border-amber-400 bg-amber-100/50 px-1.5 py-1 text-[11px] leading-relaxed text-slate-700">
+          <div className="mt-1 rounded border-l-2 border-amber-400 bg-amber-100/50 px-1.5 py-1 text-[0.75em] leading-relaxed text-slate-700">
             <span className="mr-1 font-semibold text-amber-800">なぜ:</span>
             {f.reason}
           </div>
 
           <div
-            className="mt-1.5 line-clamp-2 text-[10px] italic text-slate-500"
+            className="mt-1.5 line-clamp-2 text-[0.7em] italic text-slate-500"
             title={f.sentenceText}
           >
             「{f.sentenceText}」
@@ -129,7 +129,7 @@ function DocChip({ id }: { id: string }) {
         );
       }}
       title="Workspace パネルでこのガイドラインを開く"
-      className="cursor-pointer rounded border border-blue-200 bg-blue-50 px-1 font-mono text-[10px] text-blue-700 hover:bg-blue-100"
+      className="cursor-pointer rounded border border-blue-200 bg-blue-50 px-1 font-mono text-[0.7em] text-blue-700 hover:bg-blue-100"
     >
       doc={id}
     </button>
