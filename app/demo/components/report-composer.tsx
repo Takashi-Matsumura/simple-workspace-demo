@@ -8,6 +8,8 @@ import {
   ClipboardList,
   FileCheck2,
   Highlighter,
+  PanelLeft,
+  PanelRight,
   Search,
   Send,
   ShieldAlert,
@@ -153,15 +155,16 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       ? toolStripOverride
       : status !== "done" && status !== "error";
 
-  // 三分割 (入力メモ / 整形プレビュー / 確認事項) の境界位置を左端からの%で持つ。
-  // 左バー = 入力メモ右端、右バー = 確認事項左端。
-  // 既定は 30 / 70 → 入力メモ 30% / 整形プレビュー 40% / 確認事項 30%。
-  const LEFT_DEFAULT = 30;
-  const RIGHT_DEFAULT = 70;
-  const [leftPct, setLeftPct] = useState<number>(LEFT_DEFAULT);
-  const [rightPct, setRightPct] = useState<number>(RIGHT_DEFAULT);
+  // 整形プレビューを常時中央に置き、サイドに「入力メモ」か「確認事項」を
+  // 1 つだけ表示する。トグルボタンで切替、CSS の width transition で
+  // スライドアウト/インのアニメーションを表現する。
+  type SidePanel = "memo" | "findings";
+  const [sidePanel, setSidePanel] = useState<SidePanel>("memo");
+  // サイドペインの幅 (%)。SplitDragger でリサイズ可能。
+  const SIDE_DEFAULT = 40;
+  const [sidePct, setSidePct] = useState<number>(SIDE_DEFAULT);
 
-  // Step 2 で抽出された確認事項。整形プレビュー本文と分離して右ペインに出す。
+  // Step 2 で抽出された確認事項。整形プレビュー本文と分離してサイドペインに出す。
   const [findings, setFindings] = useState<Finding[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
@@ -461,11 +464,19 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* 左: 入力フォーム */}
+        {/* 左: 入力フォーム (sidePanel === "memo" のときのみ展開、それ以外は
+            width 0 にスライド収納)。outer で overflow-hidden + width transition、
+            inner で実際のスクロールと padding を受け持つ。 */}
         <div
-          className="flex min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2"
-          style={{ width: `${leftPct}%` }}
+          className="flex shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-in-out"
+          style={{
+            width: sidePanel === "memo" ? `${sidePct}%` : 0,
+            opacity: sidePanel === "memo" ? 1 : 0,
+            pointerEvents: sidePanel === "memo" ? "auto" : "none",
+          }}
+          aria-hidden={sidePanel !== "memo"}
         >
+        <div className="flex h-full min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2">
           <div className="flex items-center gap-1.5 font-semibold text-teal-700">
             <ClipboardList className="h-3.5 w-3.5" />
             入力メモ
@@ -559,28 +570,69 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             </div>
           )}
         </div>
+        </div>
 
-        <SplitDragger
-          pct={leftPct}
-          onChange={setLeftPct}
-          bounds={[15, rightPct - 15]}
-          defaultPct={LEFT_DEFAULT}
-        />
+        {sidePanel === "memo" && (
+          <SplitDragger
+            pct={sidePct}
+            onChange={setSidePct}
+            bounds={[20, 70]}
+            defaultPct={SIDE_DEFAULT}
+          />
+        )}
 
-        {/* 中央: 整形プレビュー */}
-        <div
-          className="flex min-w-0 flex-col overflow-hidden"
-          style={{ width: `${rightPct - leftPct}%` }}
-        >
+        {/* 中央: 整形プレビュー (常時表示) */}
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
             <span>整形プレビュー</span>
             {status === "streaming" && (
-              <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
+              <span className="inline-flex items-center gap-1 font-mono text-[10px]">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
                 running
               </span>
             )}
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSidePanel("memo")}
+                aria-pressed={sidePanel === "memo"}
+                title="左に入力メモを表示"
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                  sidePanel === "memo"
+                    ? "border-teal-600 bg-teal-600 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <PanelLeft className="h-3 w-3" />
+                <span>入力メモ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidePanel("findings")}
+                aria-pressed={sidePanel === "findings"}
+                title="右に確認事項を表示"
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                  sidePanel === "findings"
+                    ? "border-amber-500 bg-amber-500 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>確認事項</span>
+                {findings.length > 0 && (
+                  <span
+                    className={`rounded-full px-1 text-[9px] font-bold ${
+                      sidePanel === "findings"
+                        ? "bg-white/30 text-white"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {findings.length}
+                  </span>
+                )}
+                <PanelRight className="h-3 w-3" />
+              </button>
+            </div>
           </div>
 
           {/* tool-call ストリップ (Step 2 のみ)。完了後は折り畳んで本文エリアを確保。 */}
@@ -638,11 +690,11 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
             {!hasResult && !busy && (
               <p className="italic text-slate-400">
-                左のメモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
+                左の入力メモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
                 Markdown レポートがここに流れ、{" "}
                 <span className="font-mono">reports/</span> フォルダに保存されます。
-                整形完了後、自動でガイドライン照合が走り、人間の確認が必要な箇所は
-                右ペインの「確認事項」にカードとして並びます。
+                整形完了後、上の「確認事項」ボタンで、ガイドライン照合で抽出された
+                確認すべき項目をカード表示できます。
               </p>
             )}
             {previewText.length > 0 && (
@@ -656,17 +708,26 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           </div>
         </div>
 
-        <SplitDragger
-          pct={rightPct}
-          onChange={setRightPct}
-          bounds={[leftPct + 15, 85]}
-          defaultPct={RIGHT_DEFAULT}
-        />
+        {sidePanel === "findings" && (
+          <SplitDragger
+            // 右側 dragger は左端から (100 - sidePct)% の位置にある。
+            // sidePct (サイドペイン幅%) と相互変換する。
+            pct={100 - sidePct}
+            onChange={(p) => setSidePct(100 - p)}
+            bounds={[30, 80]}
+            defaultPct={100 - SIDE_DEFAULT}
+          />
+        )}
 
-        {/* 右: 確認事項 */}
+        {/* 右: 確認事項 (sidePanel === "findings" のときのみ展開) */}
         <div
-          className="flex min-w-0 flex-col overflow-hidden"
-          style={{ width: `${100 - rightPct}%` }}
+          className="flex shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-in-out"
+          style={{
+            width: sidePanel === "findings" ? `${sidePct}%` : 0,
+            opacity: sidePanel === "findings" ? 1 : 0,
+            pointerEvents: sidePanel === "findings" ? "auto" : "none",
+          }}
+          aria-hidden={sidePanel !== "findings"}
         >
           <FindingsPanel findings={findings} status={status} />
         </div>
