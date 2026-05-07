@@ -14,8 +14,10 @@ import {
   Trash2,
 } from "lucide-react";
 import { MarkdownText, OPEN_PATH_EVENT } from "./markdown-text";
+import { FindingsPanel } from "./findings-panel";
 import type { GuidelineHit } from "../types/opencode";
 import { getReportPromptOverrides } from "../lib/report-prompts";
+import type { Finding } from "@/lib/opencode/guideline-check";
 
 type Props = {
   workspaceId: string;
@@ -151,8 +153,16 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       ? toolStripOverride
       : status !== "done" && status !== "error";
 
-  // 左 (入力メモ) / 右 (整形プレビュー) の分割比率 (左ペインの幅%)。
-  const [splitPct, setSplitPct] = useState<number>(50);
+  // 三分割 (入力メモ / 整形プレビュー / 確認事項) の境界位置を左端からの%で持つ。
+  // 左バー = 入力メモ右端、右バー = 確認事項左端。
+  // 既定は 30 / 70 → 入力メモ 30% / 整形プレビュー 40% / 確認事項 30%。
+  const LEFT_DEFAULT = 30;
+  const RIGHT_DEFAULT = 70;
+  const [leftPct, setLeftPct] = useState<number>(LEFT_DEFAULT);
+  const [rightPct, setRightPct] = useState<number>(RIGHT_DEFAULT);
+
+  // Step 2 で抽出された確認事項。整形プレビュー本文と分離して右ペインに出す。
+  const [findings, setFindings] = useState<Finding[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -187,6 +197,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setToolStripOverride(null);
+    setFindings([]);
   };
 
   // Step 2: ガイドライン照合。Step 1 で保存された path を上書き保存する。
@@ -200,6 +211,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     // 体験が分かりやすい。最終ファイルを再 fetch する時点で highlight 入りに
     // 上書きされる。
     setToolEvents([]);
+    setFindings([]);
 
     try {
       const overrides = getReportPromptOverrides();
@@ -217,17 +229,22 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         throw new Error(errText || `HTTP ${res.status}`);
       }
 
-      let finalContent: string | null = null;
+      let finalPreviewBody: string | null = null;
+      let finalFindings: Finding[] | null = null;
       for await (const chunk of parseUIMessageStream(res.body)) {
         const t = chunk.type as string;
         // text-delta (LLM スクラッチ) は最終ファイルに使わないので無視する。
         if (t === "finish" || t === "message-metadata") {
-          // サーバが messageMetadata に最終ファイル内容を載せて送ってくる。
+          // サーバが messageMetadata に previewBody (末尾セクション無し) と
+          // 構造化 findings を載せて送ってくる。
           const meta = chunk.messageMetadata as
-            | { finalContent?: string }
+            | { previewBody?: string; findings?: Finding[] }
             | undefined;
-          if (meta && typeof meta.finalContent === "string") {
-            finalContent = meta.finalContent;
+          if (meta && typeof meta.previewBody === "string") {
+            finalPreviewBody = meta.previewBody;
+          }
+          if (meta && Array.isArray(meta.findings)) {
+            finalFindings = meta.findings;
           }
         } else if (t === "tool-input-start") {
           const toolCallId = String(chunk.toolCallId);
@@ -308,10 +325,15 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         }
       }
 
-      // サーバが messageMetadata で組み立て済みの最終本文を送ってくる。
-      // ここでプレビューをハイライト入りに置き換える (file fetch 不要)。
-      if (finalContent !== null) {
-        setPreviewText(finalContent);
+      // サーバが messageMetadata で組み立て済みの本文と findings を送ってくる。
+      // 整形プレビューには末尾セクション無しの previewBody を、確認事項ペインには
+      // 構造化 findings を反映する。ファイル保存内容 (末尾セクション付き) は
+      // サーバ側 onFinish で `reports/...md` に書き込み済み。
+      if (finalPreviewBody !== null) {
+        setPreviewText(finalPreviewBody);
+      }
+      if (finalFindings !== null) {
+        setFindings(finalFindings);
       }
       setStatus("done");
       // Step 2 で同 path を上書き保存しているので、workspace tree もリフレッシュ。
@@ -338,6 +360,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setToolStripOverride(null);
+    setFindings([]);
 
     try {
       const step1Override = getReportPromptOverrides().step1;
@@ -441,7 +464,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         {/* 左: 入力フォーム */}
         <div
           className="flex min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2"
-          style={{ width: `${splitPct}%` }}
+          style={{ width: `${leftPct}%` }}
         >
           <div className="flex items-center gap-1.5 font-semibold text-teal-700">
             <ClipboardList className="h-3.5 w-3.5" />
@@ -537,10 +560,18 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           )}
         </div>
 
-        <SplitDragger splitPct={splitPct} onChange={setSplitPct} />
+        <SplitDragger
+          pct={leftPct}
+          onChange={setLeftPct}
+          bounds={[15, rightPct - 15]}
+          defaultPct={LEFT_DEFAULT}
+        />
 
-        {/* 右: 整形プレビュー */}
-        <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
+        {/* 中央: 整形プレビュー */}
+        <div
+          className="flex min-w-0 flex-col overflow-hidden"
+          style={{ width: `${rightPct - leftPct}%` }}
+        >
           <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
             <span>整形プレビュー</span>
@@ -610,8 +641,8 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 左のメモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
                 Markdown レポートがここに流れ、{" "}
                 <span className="font-mono">reports/</span> フォルダに保存されます。
-                整形完了後、自動でガイドライン照合が走り、人間の確認が必要な箇所が
-                太字 + サマリで追記されます。
+                整形完了後、自動でガイドライン照合が走り、人間の確認が必要な箇所は
+                右ペインの「確認事項」にカードとして並びます。
               </p>
             )}
             {previewText.length > 0 && (
@@ -624,18 +655,38 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             )}
           </div>
         </div>
+
+        <SplitDragger
+          pct={rightPct}
+          onChange={setRightPct}
+          bounds={[leftPct + 15, 85]}
+          defaultPct={RIGHT_DEFAULT}
+        />
+
+        {/* 右: 確認事項 */}
+        <div
+          className="flex min-w-0 flex-col overflow-hidden"
+          style={{ width: `${100 - rightPct}%` }}
+        >
+          <FindingsPanel findings={findings} status={status} />
+        </div>
       </div>
     </div>
   );
 }
 
 function SplitDragger({
-  splitPct,
+  pct,
   onChange,
+  bounds = [15, 85],
+  defaultPct,
 }: {
-  splitPct: number;
+  pct: number;
   onChange: (pct: number) => void;
+  bounds?: [number, number];
+  defaultPct?: number;
 }) {
+  const [lo, hi] = bounds;
   return (
     <div
       role="separator"
@@ -643,6 +694,8 @@ function SplitDragger({
       onPointerDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // 親要素 = 三分割の flex コンテナ。ドラッグ中の % 計算は親の幅基準で
+        // 一貫させる。
         const parent = e.currentTarget.parentElement;
         if (!parent) return;
         const rect = parent.getBoundingClientRect();
@@ -650,8 +703,8 @@ function SplitDragger({
         target.setPointerCapture(e.pointerId);
         const move = (ev: PointerEvent) => {
           const x = ev.clientX - rect.left;
-          const pct = Math.max(20, Math.min(80, (x / rect.width) * 100));
-          onChange(pct);
+          const next = Math.max(lo, Math.min(hi, (x / rect.width) * 100));
+          onChange(next);
         };
         const up = () => {
           target.releasePointerCapture(e.pointerId);
@@ -661,9 +714,15 @@ function SplitDragger({
         target.addEventListener("pointermove", move as EventListener);
         target.addEventListener("pointerup", up as EventListener);
       }}
-      onDoubleClick={() => onChange(50)}
+      onDoubleClick={() => {
+        if (defaultPct !== undefined) onChange(defaultPct);
+      }}
       className="w-1 shrink-0 cursor-col-resize bg-slate-200 transition-colors hover:bg-teal-300"
-      title={`split: ${Math.round(splitPct)}% — ダブルクリックで 50% に戻す`}
+      title={
+        defaultPct !== undefined
+          ? `split: ${Math.round(pct)}% — ダブルクリックで ${defaultPct}% に戻す`
+          : `split: ${Math.round(pct)}%`
+      }
     />
   );
 }
