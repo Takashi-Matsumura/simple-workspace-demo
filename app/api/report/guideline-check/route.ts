@@ -9,6 +9,7 @@ import {
 } from "@/lib/opencode/files";
 import { searchCorpus, getDocById } from "@/lib/opencode/search";
 import { GUIDELINE_CHECK_PROMPT } from "@/lib/opencode/guideline-prompt";
+import type { Finding } from "@/lib/opencode/guideline-check";
 
 export const runtime = "nodejs";
 export const maxDuration = 60;
@@ -28,39 +29,40 @@ const RequestBody = z.object({
   systemPromptOverride: z.string().min(1).max(16000).optional(),
 });
 
-type Finding = {
-  sentenceText: string;
-  label: string;
-  reason: string;
-  citations: string[];
-};
-
 const MAX_FINDINGS = 6;
 
-// 原本本文と findings から最終 Markdown を決定論的に組み立てる。
-// - 各 finding の sentenceText を 1 回だけ **...** で囲む (原文に存在しない場合はスキップ)
-// - 末尾に「## ⚠️ 人間の確認が必要な事項」セクションを 1 つ追加
-function assembleReport(originalBody: string, findings: Finding[]): string {
+// 本文中の該当文 (sentenceText) を **[N] ...** で囲む。
+// クライアント側の MarkdownText が [N] を抽出してバッジ描画する。
+// 同じ sentenceText を 2 度置換しないよう、indexOf による最初の 1 件だけを書き換える。
+function annotateBody(originalBody: string, findings: Finding[]): string {
   let body = originalBody.trim();
-  // 本文中の該当文を **[N] ...** で囲む。N は finding の通し番号 (1 始まり)。
-  // クライアント側の MarkdownText が [N] を抽出してバッジ描画する。
-  findings.forEach((f, i) => {
+  findings.forEach((f) => {
     const idx = body.indexOf(f.sentenceText);
     if (idx === -1) return;
-    const wrapped = `**[${i + 1}] ${f.sentenceText}**`;
+    const wrapped = `**[${f.index}] ${f.sentenceText}**`;
     body =
       body.slice(0, idx) + wrapped + body.slice(idx + f.sentenceText.length);
   });
+  return body;
+}
+
+// 末尾に置く「## ⚠️ 人間の確認が必要な事項」セクションを組み立てる。
+function buildSummarySection(findings: Finding[]): string {
   const summary =
     findings.length === 0
       ? "- 特記すべき確認事項はありません。"
       : findings
-          .map((f, i) => {
+          .map((f) => {
             const cites = f.citations.map((c) => `[doc=${c}]`).join(" ");
-            return `- **[${i + 1}] ${f.label}**: ${f.reason} ${cites}`.trimEnd();
+            return `- **[${f.index}] ${f.label}**: ${f.reason} ${cites}`.trimEnd();
           })
           .join("\n");
-  return `${body}\n\n## ⚠️ 人間の確認が必要な事項\n\n${summary}\n`;
+  return `## ⚠️ 人間の確認が必要な事項\n\n${summary}\n`;
+}
+
+// 本文 + 末尾セクション = ファイルに保存される完成形。
+function assembleReport(originalBody: string, findings: Finding[]): string {
+  return `${annotateBody(originalBody, findings)}\n\n${buildSummarySection(findings)}`;
 }
 
 export async function POST(req: Request) {
@@ -200,6 +202,7 @@ export async function POST(req: Request) {
         }
         seenSentences.add(normalized);
         findings.push({
+          index: findings.length + 1,
           sentenceText: normalized,
           label: label.trim(),
           reason: reason.trim(),
@@ -249,9 +252,14 @@ ${originalBody.trim()}`;
       // これでクライアント側の追加 fetch やタイミング問題なく previewText を
       // 確定できる。
       if (part.type === "finish") {
+        // クライアントは previewBody (末尾セクション無し) を整形プレビューに、
+        // findings (構造化) を確認事項ペインに表示する。finalContent は
+        // 互換のため残す (既存のファイル保存内容と同一文字列)。
         return {
           mode: "guideline-check" as const,
+          previewBody: annotateBody(originalBody, findings),
           finalContent: assembleReport(originalBody, findings),
+          findings,
           findingsCount: findings.length,
         };
       }

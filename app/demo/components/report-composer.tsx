@@ -8,14 +8,18 @@ import {
   ClipboardList,
   FileCheck2,
   Highlighter,
+  PanelLeft,
+  PanelRight,
   Search,
   Send,
   ShieldAlert,
   Trash2,
 } from "lucide-react";
 import { MarkdownText, OPEN_PATH_EVENT } from "./markdown-text";
+import { FindingsPanel } from "./findings-panel";
 import type { GuidelineHit } from "../types/opencode";
 import { getReportPromptOverrides } from "../lib/report-prompts";
+import type { Finding } from "@/lib/opencode/guideline-check";
 
 type Props = {
   workspaceId: string;
@@ -151,8 +155,17 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       ? toolStripOverride
       : status !== "done" && status !== "error";
 
-  // 左 (入力メモ) / 右 (整形プレビュー) の分割比率 (左ペインの幅%)。
-  const [splitPct, setSplitPct] = useState<number>(50);
+  // 整形プレビューを常時中央に置き、サイドに「入力メモ」か「確認事項」を
+  // 1 つだけ表示する。トグルボタンで切替、CSS の width transition で
+  // スライドアウト/インのアニメーションを表現する。
+  type SidePanel = "memo" | "findings";
+  const [sidePanel, setSidePanel] = useState<SidePanel>("memo");
+  // サイドペインの幅 (%)。SplitDragger でリサイズ可能。
+  const SIDE_DEFAULT = 40;
+  const [sidePct, setSidePct] = useState<number>(SIDE_DEFAULT);
+
+  // Step 2 で抽出された確認事項。整形プレビュー本文と分離してサイドペインに出す。
+  const [findings, setFindings] = useState<Finding[]>([]);
 
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
@@ -187,6 +200,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setToolStripOverride(null);
+    setFindings([]);
   };
 
   // Step 2: ガイドライン照合。Step 1 で保存された path を上書き保存する。
@@ -200,6 +214,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     // 体験が分かりやすい。最終ファイルを再 fetch する時点で highlight 入りに
     // 上書きされる。
     setToolEvents([]);
+    setFindings([]);
 
     try {
       const overrides = getReportPromptOverrides();
@@ -217,17 +232,22 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         throw new Error(errText || `HTTP ${res.status}`);
       }
 
-      let finalContent: string | null = null;
+      let finalPreviewBody: string | null = null;
+      let finalFindings: Finding[] | null = null;
       for await (const chunk of parseUIMessageStream(res.body)) {
         const t = chunk.type as string;
         // text-delta (LLM スクラッチ) は最終ファイルに使わないので無視する。
         if (t === "finish" || t === "message-metadata") {
-          // サーバが messageMetadata に最終ファイル内容を載せて送ってくる。
+          // サーバが messageMetadata に previewBody (末尾セクション無し) と
+          // 構造化 findings を載せて送ってくる。
           const meta = chunk.messageMetadata as
-            | { finalContent?: string }
+            | { previewBody?: string; findings?: Finding[] }
             | undefined;
-          if (meta && typeof meta.finalContent === "string") {
-            finalContent = meta.finalContent;
+          if (meta && typeof meta.previewBody === "string") {
+            finalPreviewBody = meta.previewBody;
+          }
+          if (meta && Array.isArray(meta.findings)) {
+            finalFindings = meta.findings;
           }
         } else if (t === "tool-input-start") {
           const toolCallId = String(chunk.toolCallId);
@@ -308,10 +328,15 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         }
       }
 
-      // サーバが messageMetadata で組み立て済みの最終本文を送ってくる。
-      // ここでプレビューをハイライト入りに置き換える (file fetch 不要)。
-      if (finalContent !== null) {
-        setPreviewText(finalContent);
+      // サーバが messageMetadata で組み立て済みの本文と findings を送ってくる。
+      // 整形プレビューには末尾セクション無しの previewBody を、確認事項ペインには
+      // 構造化 findings を反映する。ファイル保存内容 (末尾セクション付き) は
+      // サーバ側 onFinish で `reports/...md` に書き込み済み。
+      if (finalPreviewBody !== null) {
+        setPreviewText(finalPreviewBody);
+      }
+      if (finalFindings !== null) {
+        setFindings(finalFindings);
       }
       setStatus("done");
       // Step 2 で同 path を上書き保存しているので、workspace tree もリフレッシュ。
@@ -338,6 +363,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
     setSavedPath(null);
     setToolEvents([]);
     setToolStripOverride(null);
+    setFindings([]);
 
     try {
       const step1Override = getReportPromptOverrides().step1;
@@ -438,11 +464,19 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       </div>
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
-        {/* 左: 入力フォーム */}
+        {/* 左: 入力フォーム (sidePanel === "memo" のときのみ展開、それ以外は
+            width 0 にスライド収納)。outer で overflow-hidden + width transition、
+            inner で実際のスクロールと padding を受け持つ。 */}
         <div
-          className="flex min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2"
-          style={{ width: `${splitPct}%` }}
+          className="flex shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-in-out"
+          style={{
+            width: sidePanel === "memo" ? `${sidePct}%` : 0,
+            opacity: sidePanel === "memo" ? 1 : 0,
+            pointerEvents: sidePanel === "memo" ? "auto" : "none",
+          }}
+          aria-hidden={sidePanel !== "memo"}
         >
+        <div className="flex h-full min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2">
           <div className="flex items-center gap-1.5 font-semibold text-teal-700">
             <ClipboardList className="h-3.5 w-3.5" />
             入力メモ
@@ -536,20 +570,69 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             </div>
           )}
         </div>
+        </div>
 
-        <SplitDragger splitPct={splitPct} onChange={setSplitPct} />
+        {sidePanel === "memo" && (
+          <SplitDragger
+            pct={sidePct}
+            onChange={setSidePct}
+            bounds={[20, 70]}
+            defaultPct={SIDE_DEFAULT}
+          />
+        )}
 
-        {/* 右: 整形プレビュー */}
+        {/* 中央: 整形プレビュー (常時表示) */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
             <span>整形プレビュー</span>
             {status === "streaming" && (
-              <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
+              <span className="inline-flex items-center gap-1 font-mono text-[10px]">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
                 running
               </span>
             )}
+            <div className="ml-auto flex items-center gap-1">
+              <button
+                type="button"
+                onClick={() => setSidePanel("memo")}
+                aria-pressed={sidePanel === "memo"}
+                title="左に入力メモを表示"
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                  sidePanel === "memo"
+                    ? "border-teal-600 bg-teal-600 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <PanelLeft className="h-3 w-3" />
+                <span>入力メモ</span>
+              </button>
+              <button
+                type="button"
+                onClick={() => setSidePanel("findings")}
+                aria-pressed={sidePanel === "findings"}
+                title="右に確認事項を表示"
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                  sidePanel === "findings"
+                    ? "border-amber-500 bg-amber-500 text-white"
+                    : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
+                }`}
+              >
+                <span>確認事項</span>
+                {findings.length > 0 && (
+                  <span
+                    className={`rounded-full px-1 text-[9px] font-bold ${
+                      sidePanel === "findings"
+                        ? "bg-white/30 text-white"
+                        : "bg-amber-100 text-amber-800"
+                    }`}
+                  >
+                    {findings.length}
+                  </span>
+                )}
+                <PanelRight className="h-3 w-3" />
+              </button>
+            </div>
           </div>
 
           {/* tool-call ストリップ (Step 2 のみ)。完了後は折り畳んで本文エリアを確保。 */}
@@ -607,11 +690,11 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           <div className="min-h-0 flex-1 overflow-y-auto px-3 py-2">
             {!hasResult && !busy && (
               <p className="italic text-slate-400">
-                左のメモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
+                左の入力メモを書いて「整形してファイル保存」を押すと、テンプレートに沿った
                 Markdown レポートがここに流れ、{" "}
                 <span className="font-mono">reports/</span> フォルダに保存されます。
-                整形完了後、自動でガイドライン照合が走り、人間の確認が必要な箇所が
-                太字 + サマリで追記されます。
+                整形完了後、上の「確認事項」ボタンで、ガイドライン照合で抽出された
+                確認すべき項目をカード表示できます。
               </p>
             )}
             {previewText.length > 0 && (
@@ -624,18 +707,47 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             )}
           </div>
         </div>
+
+        {sidePanel === "findings" && (
+          <SplitDragger
+            // 右側 dragger は左端から (100 - sidePct)% の位置にある。
+            // sidePct (サイドペイン幅%) と相互変換する。
+            pct={100 - sidePct}
+            onChange={(p) => setSidePct(100 - p)}
+            bounds={[30, 80]}
+            defaultPct={100 - SIDE_DEFAULT}
+          />
+        )}
+
+        {/* 右: 確認事項 (sidePanel === "findings" のときのみ展開) */}
+        <div
+          className="flex shrink-0 flex-col overflow-hidden transition-[width,opacity] duration-300 ease-in-out"
+          style={{
+            width: sidePanel === "findings" ? `${sidePct}%` : 0,
+            opacity: sidePanel === "findings" ? 1 : 0,
+            pointerEvents: sidePanel === "findings" ? "auto" : "none",
+          }}
+          aria-hidden={sidePanel !== "findings"}
+        >
+          <FindingsPanel findings={findings} status={status} />
+        </div>
       </div>
     </div>
   );
 }
 
 function SplitDragger({
-  splitPct,
+  pct,
   onChange,
+  bounds = [15, 85],
+  defaultPct,
 }: {
-  splitPct: number;
+  pct: number;
   onChange: (pct: number) => void;
+  bounds?: [number, number];
+  defaultPct?: number;
 }) {
+  const [lo, hi] = bounds;
   return (
     <div
       role="separator"
@@ -643,6 +755,8 @@ function SplitDragger({
       onPointerDown={(e) => {
         e.preventDefault();
         e.stopPropagation();
+        // 親要素 = 三分割の flex コンテナ。ドラッグ中の % 計算は親の幅基準で
+        // 一貫させる。
         const parent = e.currentTarget.parentElement;
         if (!parent) return;
         const rect = parent.getBoundingClientRect();
@@ -650,8 +764,8 @@ function SplitDragger({
         target.setPointerCapture(e.pointerId);
         const move = (ev: PointerEvent) => {
           const x = ev.clientX - rect.left;
-          const pct = Math.max(20, Math.min(80, (x / rect.width) * 100));
-          onChange(pct);
+          const next = Math.max(lo, Math.min(hi, (x / rect.width) * 100));
+          onChange(next);
         };
         const up = () => {
           target.releasePointerCapture(e.pointerId);
@@ -661,9 +775,15 @@ function SplitDragger({
         target.addEventListener("pointermove", move as EventListener);
         target.addEventListener("pointerup", up as EventListener);
       }}
-      onDoubleClick={() => onChange(50)}
+      onDoubleClick={() => {
+        if (defaultPct !== undefined) onChange(defaultPct);
+      }}
       className="w-1 shrink-0 cursor-col-resize bg-slate-200 transition-colors hover:bg-teal-300"
-      title={`split: ${Math.round(splitPct)}% — ダブルクリックで 50% に戻す`}
+      title={
+        defaultPct !== undefined
+          ? `split: ${Math.round(pct)}% — ダブルクリックで ${defaultPct}% に戻す`
+          : `split: ${Math.round(pct)}%`
+      }
     />
   );
 }
