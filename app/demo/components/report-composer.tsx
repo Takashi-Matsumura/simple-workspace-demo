@@ -151,6 +151,9 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
       ? toolStripOverride
       : status !== "done" && status !== "error";
 
+  // 左 (入力メモ) / 右 (整形プレビュー) の分割比率 (左ペインの幅%)。
+  const [splitPct, setSplitPct] = useState<number>(50);
+
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   // 生成完了後に textarea にフォーカスを戻して、続けて別メモを作りやすくする。
@@ -436,7 +439,10 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
 
       <div className="flex min-h-0 flex-1 overflow-hidden">
         {/* 左: 入力フォーム */}
-        <div className="flex min-w-0 flex-1 flex-col gap-2 overflow-y-auto border-r border-slate-200 px-3 py-2">
+        <div
+          className="flex min-w-0 flex-col gap-2 overflow-y-auto px-3 py-2"
+          style={{ width: `${splitPct}%` }}
+        >
           <div className="flex items-center gap-1.5 font-semibold text-teal-700">
             <ClipboardList className="h-3.5 w-3.5" />
             入力メモ
@@ -531,6 +537,8 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           )}
         </div>
 
+        <SplitDragger splitPct={splitPct} onChange={setSplitPct} />
+
         {/* 右: 整形プレビュー */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
           <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
@@ -618,6 +626,45 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
         </div>
       </div>
     </div>
+  );
+}
+
+function SplitDragger({
+  splitPct,
+  onChange,
+}: {
+  splitPct: number;
+  onChange: (pct: number) => void;
+}) {
+  return (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      onPointerDown={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        const parent = e.currentTarget.parentElement;
+        if (!parent) return;
+        const rect = parent.getBoundingClientRect();
+        const target = e.currentTarget;
+        target.setPointerCapture(e.pointerId);
+        const move = (ev: PointerEvent) => {
+          const x = ev.clientX - rect.left;
+          const pct = Math.max(20, Math.min(80, (x / rect.width) * 100));
+          onChange(pct);
+        };
+        const up = () => {
+          target.releasePointerCapture(e.pointerId);
+          target.removeEventListener("pointermove", move as EventListener);
+          target.removeEventListener("pointerup", up as EventListener);
+        };
+        target.addEventListener("pointermove", move as EventListener);
+        target.addEventListener("pointerup", up as EventListener);
+      }}
+      onDoubleClick={() => onChange(50)}
+      className="w-1 shrink-0 cursor-col-resize bg-slate-200 transition-colors hover:bg-teal-300"
+      title={`split: ${Math.round(splitPct)}% — ダブルクリックで 50% に戻す`}
+    />
   );
 }
 
