@@ -84,20 +84,23 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
   const hasMessages = rag.messages.length > 0 || agentic.messages.length > 0;
 
   return (
-    <div className="flex h-full w-full flex-col bg-white text-slate-700">
+    <div
+      className="flex h-full w-full flex-col bg-white text-slate-700"
+      style={{ fontSize }}
+    >
       {/* ワークスペース表示 + クリアボタン */}
       <div className="flex shrink-0 items-center gap-2 border-b border-blue-200 bg-blue-50 px-3 py-1.5">
         <button
           type="button"
           onClick={clear}
           disabled={busy || !hasMessages}
-          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[0.85em] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
           title="両カラムの会話履歴とコンテキストをクリア"
         >
           <Trash2 className="h-3 w-3" />
           クリア
         </button>
-        <span className="ml-auto font-mono text-[10px] text-slate-400">
+        <span className="ml-auto font-mono text-[0.77em] text-slate-400">
           ws: {workspaceId}
         </span>
       </div>
@@ -112,7 +115,6 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           messages={rag.messages}
           error={rag.error}
           busy={ragBusy}
-          fontSize={fontSize}
           emptyHint="RAG: 1 回キーワード検索 → LLM がスニペットだけを根拠に回答します。多段ホップや語彙ギャップが必要な質問では弱い場面が見えます。"
         />
         <ChatColumn
@@ -123,7 +125,6 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
           messages={agentic.messages}
           error={agentic.error}
           busy={agenticBusy}
-          fontSize={fontSize}
           emptyHint="Agentic: LLM が searchDocs / readDoc を自律的に呼び、必要に応じて多段でドキュメントを読みに行きます。"
           borderLeft
         />
@@ -138,7 +139,7 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
               type="button"
               onClick={() => setInput(p.text)}
               disabled={busy}
-              className="shrink-0 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+              className="shrink-0 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[0.85em] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
             >
               {p.label}
             </button>
@@ -158,12 +159,12 @@ export default function OpenCodeChat({ workspaceId, fontSize }: Props) {
             disabled={busy}
             placeholder="同じ質問を RAG / Agentic 両方に投げます..."
             autoFocus
-            className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[12px] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
+            className="min-w-0 flex-1 rounded border border-slate-300 bg-white px-2.5 py-1.5 text-[0.92em] text-slate-700 placeholder:text-slate-400 focus:border-blue-400 focus:outline-none disabled:opacity-50"
           />
           <button
             type="submit"
             disabled={busy || !input.trim()}
-            className="inline-flex shrink-0 items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-blue-500 disabled:opacity-40"
+            className="inline-flex shrink-0 items-center gap-1 rounded bg-blue-600 px-3 py-1.5 text-[0.92em] font-medium text-white hover:bg-blue-500 disabled:opacity-40"
             title="送信 (両方に同時投稿)"
           >
             <Send className="h-3 w-3" />
@@ -183,7 +184,6 @@ function ChatColumn({
   messages,
   error,
   busy,
-  fontSize,
   emptyHint,
   borderLeft,
 }: {
@@ -194,7 +194,6 @@ function ChatColumn({
   messages: OpencodeUIMessage[];
   error: Error | undefined;
   busy: boolean;
-  fontSize: number;
   emptyHint: string;
   borderLeft?: boolean;
 }) {
@@ -212,7 +211,7 @@ function ChatColumn({
       }`}
     >
       <div
-        className="flex shrink-0 items-center gap-1.5 border-b px-3 py-1.5 text-[11px] font-semibold"
+        className="flex shrink-0 items-center gap-1.5 border-b px-3 py-1.5 text-[0.85em] font-semibold"
         style={{
           color,
           borderColor: `${color}33`,
@@ -222,7 +221,7 @@ function ChatColumn({
         {icon}
         <span>{label}</span>
         {busy && (
-          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px]">
+          <span className="ml-auto inline-flex items-center gap-1 font-mono text-[0.77em]">
             <span className="h-1.5 w-1.5 animate-pulse rounded-full" style={{ backgroundColor: color }} />
             running
           </span>
@@ -231,7 +230,6 @@ function ChatColumn({
       <div
         ref={scrollRef}
         className="min-h-0 flex-1 space-y-3 overflow-y-auto bg-white px-3 py-3"
-        style={{ fontSize }}
       >
         {messages.length === 0 && !error && (
           <p className="italic text-slate-400">{emptyHint}</p>
@@ -362,7 +360,7 @@ function ReasoningView({
           <span className="font-medium">Thinking</span>
         )}
         <span
-          className={`ml-auto font-mono text-[10px] ${
+          className={`ml-auto font-mono text-[0.77em] ${
             streaming ? "text-blue-500" : "text-slate-400"
           }`}
         >

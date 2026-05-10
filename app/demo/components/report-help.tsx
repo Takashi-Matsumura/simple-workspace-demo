@@ -76,7 +76,7 @@ export function ReportHelp({ fontSize }: Props) {
           <li>
             本文中の該当文は <Highlighter className="inline h-3 w-3" />{" "}
             蛍光ペン風ハイライト + 番号バッジ{" "}
-            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-600 text-[8px] font-bold text-white">
+            <span className="inline-flex h-3 w-3 items-center justify-center rounded-full bg-amber-600 text-[0.6em] font-bold text-white">
               1
             </span>{" "}
             で強調
@@ -190,7 +190,7 @@ export function ReportHelp({ fontSize }: Props) {
             日本語は本文だけに含まれます
           </li>
         </ul>
-        <div className="mt-1 rounded border border-slate-200 bg-white px-2 py-1 font-mono text-[10px] text-slate-600">
+        <div className="mt-1 rounded border border-slate-200 bg-white px-2 py-1 font-mono text-[0.77em] text-slate-600">
           reports/2026-04-29-01.md ← 4/29 の 1 件目
           <br />
           reports/2026-04-29-02.md ← 4/29 の 2 件目
@@ -248,7 +248,7 @@ export function ReportHelp({ fontSize }: Props) {
       </Section>
 
       <div className="mt-4 rounded border border-slate-200 bg-slate-50 px-2 py-1.5">
-        <div className="mb-1 text-[10px] uppercase tracking-wider text-slate-400">
+        <div className="mb-1 text-[0.77em] uppercase tracking-wider text-slate-400">
           tips
         </div>
         <ul className="list-disc space-y-0.5 pl-4 text-slate-600">
@@ -294,7 +294,7 @@ function Section({
         <span className="font-semibold">{label}</span>
       </div>
       {endpoint && (
-        <div className="mb-1 font-mono text-[10px] text-slate-400">
+        <div className="mb-1 font-mono text-[0.77em] text-slate-400">
           {endpoint}
         </div>
       )}
