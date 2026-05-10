@@ -24,7 +24,7 @@ type Tab = "help" | "prompt";
 export function ReportBack({ fontSize }: Props) {
   const [tab, setTab] = useState<Tab>("help");
   return (
-    <div className="flex h-full w-full flex-col">
+    <div className="flex h-full w-full flex-col" style={{ fontSize }}>
       <div className="flex shrink-0 items-stretch border-b border-slate-200 bg-slate-50">
         <TabButton
           active={tab === "help"}
@@ -63,7 +63,7 @@ function TabButton({
     <button
       type="button"
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[12px] font-semibold transition-colors ${
+      className={`inline-flex items-center gap-1.5 px-3 py-1.5 text-[0.92em] font-semibold transition-colors ${
         active
           ? "border-b-2 border-teal-600 text-teal-700"
           : "border-b-2 border-transparent text-slate-500 hover:bg-slate-100"
@@ -137,7 +137,7 @@ function PromptEditor({ fontSize }: { fontSize: number }) {
       className="flex min-h-0 flex-1 flex-col gap-3 overflow-y-auto px-3 py-3 text-slate-700"
       style={{ fontSize }}
     >
-      <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[11px] text-amber-900">
+      <div className="rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-[0.85em] text-amber-900">
         編集した内容を「保存」で localStorage に保持し、リクエスト時にサーバの{" "}
         <span className="font-mono">REPORT_SYSTEM_PROMPT</span> /{" "}
         <span className="font-mono">GUIDELINE_CHECK_PROMPT</span>{" "}
@@ -175,7 +175,7 @@ function PromptEditor({ fontSize }: { fontSize: number }) {
         <button
           type="button"
           onClick={resetAll}
-          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50"
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[0.85em] text-slate-700 hover:bg-slate-50"
         >
           <RotateCcw className="h-3 w-3" />
           すべてデフォルトに戻す
@@ -210,8 +210,8 @@ function PromptField({
     <div className="rounded border border-slate-200 bg-white px-2 py-2">
       <div className="mb-1 flex items-center gap-2">
         <span className="font-semibold text-slate-700">{label}</span>
-        <span className="font-mono text-[10px] text-slate-400">{endpoint}</span>
-        <span className="ml-auto font-mono text-[10px] text-slate-400">
+        <span className="font-mono text-[0.77em] text-slate-400">{endpoint}</span>
+        <span className="ml-auto font-mono text-[0.77em] text-slate-400">
           {value.length} / {REPORT_PROMPT_MAX_LEN}
         </span>
       </div>
@@ -219,14 +219,14 @@ function PromptField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         rows={10}
-        className={`w-full resize-y rounded border bg-white px-2 py-1.5 font-mono text-[11px] leading-snug text-slate-700 focus:outline-none ${
+        className={`w-full resize-y rounded border bg-white px-2 py-1.5 font-mono text-[0.85em] leading-snug text-slate-700 focus:outline-none ${
           tooLong
             ? "border-rose-400 focus:border-rose-500"
             : "border-slate-300 focus:border-teal-400"
         }`}
       />
       {tooLong && (
-        <div className="mt-1 text-[10px] text-rose-600">
+        <div className="mt-1 text-[0.77em] text-rose-600">
           {REPORT_PROMPT_MAX_LEN} 文字を超えています。短くしてください。
         </div>
       )}
@@ -235,22 +235,22 @@ function PromptField({
           type="button"
           onClick={onSave}
           disabled={tooLong}
-          className="inline-flex items-center gap-1 rounded bg-teal-600 px-2 py-1 text-[11px] font-medium text-white hover:bg-teal-500 disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded bg-teal-600 px-2 py-1 text-[0.85em] font-medium text-white hover:bg-teal-500 disabled:opacity-40"
         >
           <Save className="h-3 w-3" />
           保存
         </button>
         {savedState === "saved" && (
-          <span className="text-[10px] text-teal-700">保存しました</span>
+          <span className="text-[0.77em] text-teal-700">保存しました</span>
         )}
         {savedState === "dirty" && (
-          <span className="text-[10px] text-amber-700">未保存の変更あり</span>
+          <span className="text-[0.77em] text-amber-700">未保存の変更あり</span>
         )}
         <button
           type="button"
           onClick={onReset}
           disabled={isDefault}
-          className="ml-auto inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[11px] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
+          className="ml-auto inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-1 text-[0.85em] text-slate-700 hover:bg-slate-50 disabled:cursor-not-allowed disabled:opacity-40"
           title={isDefault ? "既にデフォルト値です" : "デフォルトプロンプトに戻す"}
         >
           <RotateCcw className="h-3 w-3" />

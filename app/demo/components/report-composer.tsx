@@ -446,19 +446,19 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           type="button"
           onClick={reset}
           disabled={busy}
-          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+          className="inline-flex items-center gap-1 rounded border border-slate-300 bg-white px-2 py-0.5 text-[0.85em] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
           title="フォームとプレビューをリセット"
         >
           <Trash2 className="h-3 w-3" />
           クリア
         </button>
         {savedPath && (
-          <span className="inline-flex items-center gap-1 rounded border border-teal-300 bg-white px-2 py-0.5 font-mono text-[10px] text-teal-700">
+          <span className="inline-flex items-center gap-1 rounded border border-teal-300 bg-white px-2 py-0.5 font-mono text-[0.77em] text-teal-700">
             <FileCheck2 className="h-3 w-3" />
             {savedPath}
           </span>
         )}
-        <span className="ml-auto font-mono text-[10px] text-slate-400">
+        <span className="ml-auto font-mono text-[0.77em] text-slate-400">
           ws: {workspaceId}
         </span>
       </div>
@@ -533,7 +533,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 type="button"
                 onClick={() => applyPreset(p)}
                 disabled={busy}
-                className="shrink-0 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[11px] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
+                className="shrink-0 rounded-full border border-slate-300 bg-white px-2.5 py-1 text-[0.85em] text-slate-600 hover:bg-slate-100 disabled:opacity-40"
               >
                 {p.label}
               </button>
@@ -544,7 +544,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             type="button"
             onClick={submit}
             disabled={!canSubmit}
-            className="inline-flex items-center justify-center gap-1 rounded bg-teal-600 px-3 py-1.5 text-[12px] font-medium text-white hover:bg-teal-500 disabled:opacity-40"
+            className="inline-flex items-center justify-center gap-1 rounded bg-teal-600 px-3 py-1.5 text-[0.92em] font-medium text-white hover:bg-teal-500 disabled:opacity-40"
           >
             <Send className="h-3 w-3" />
             {status === "streaming"
@@ -555,7 +555,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
           </button>
 
           {errorMsg && (
-            <div className="rounded border border-rose-300 bg-rose-50 p-2 text-[11px] text-rose-700">
+            <div className="rounded border border-rose-300 bg-rose-50 p-2 text-[0.85em] text-rose-700">
               <div className="mb-1 font-medium">エラー</div>
               <div className="whitespace-pre-wrap font-mono">{errorMsg}</div>
               <div className="mt-1 text-rose-600/80">
@@ -564,7 +564,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
             </div>
           )}
           {warningMsg && (
-            <div className="rounded border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-800">
+            <div className="rounded border border-amber-300 bg-amber-50 p-2 text-[0.85em] text-amber-800">
               <div className="mb-1 font-medium">警告</div>
               <div className="whitespace-pre-wrap">{warningMsg}</div>
             </div>
@@ -583,11 +583,11 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
 
         {/* 中央: 整形プレビュー (常時表示) */}
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden">
-          <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[11px] font-semibold text-teal-700">
+          <div className="flex shrink-0 items-center gap-1.5 border-b border-teal-200 bg-teal-50/60 px-3 py-1 text-[0.85em] font-semibold text-teal-700">
             <FileCheck2 className="h-3 w-3" />
             <span>整形プレビュー</span>
             {status === "streaming" && (
-              <span className="inline-flex items-center gap-1 font-mono text-[10px]">
+              <span className="inline-flex items-center gap-1 font-mono text-[0.77em]">
                 <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-teal-500" />
                 running
               </span>
@@ -598,7 +598,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 onClick={() => setSidePanel("memo")}
                 aria-pressed={sidePanel === "memo"}
                 title="左に入力メモを表示"
-                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[0.77em] transition-colors ${
                   sidePanel === "memo"
                     ? "border-teal-600 bg-teal-600 text-white"
                     : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
@@ -612,7 +612,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 onClick={() => setSidePanel("findings")}
                 aria-pressed={sidePanel === "findings"}
                 title="右に確認事項を表示"
-                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[10px] transition-colors ${
+                className={`inline-flex items-center gap-1 rounded border px-1.5 py-0.5 text-[0.77em] transition-colors ${
                   sidePanel === "findings"
                     ? "border-amber-500 bg-amber-500 text-white"
                     : "border-slate-300 bg-white text-slate-600 hover:bg-slate-100"
@@ -621,7 +621,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 <span>確認事項</span>
                 {findings.length > 0 && (
                   <span
-                    className={`rounded-full px-1 text-[9px] font-bold ${
+                    className={`rounded-full px-1 text-[0.7em] font-bold ${
                       sidePanel === "findings"
                         ? "bg-white/30 text-white"
                         : "bg-amber-100 text-amber-800"
@@ -641,7 +641,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
               <button
                 type="button"
                 onClick={() => setToolStripOverride(!toolStripOpen)}
-                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[10px] font-semibold uppercase tracking-wider text-amber-800 hover:bg-amber-100/40"
+                className="flex w-full items-center gap-1.5 px-3 py-1.5 text-left text-[0.77em] font-semibold uppercase tracking-wider text-amber-800 hover:bg-amber-100/40"
                 title={toolStripOpen ? "詳細を折り畳む" : "詳細を展開する"}
               >
                 {toolStripOpen ? (
@@ -651,7 +651,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                 )}
                 <ShieldAlert className="h-3 w-3" />
                 <span>Agentic ガイドライン検索</span>
-                <span className="inline-flex items-center gap-2 font-mono text-[10px] font-normal text-amber-700/80">
+                <span className="inline-flex items-center gap-2 font-mono text-[0.77em] font-normal text-amber-700/80">
                   <span className="inline-flex items-center gap-0.5">
                     <Search className="h-3 w-3" />
                     {completedSearches}
@@ -666,7 +666,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
                   </span>
                 </span>
                 {status === "checking" && (
-                  <span className="ml-auto inline-flex items-center gap-1 font-mono text-[10px] font-normal">
+                  <span className="ml-auto inline-flex items-center gap-1 font-mono text-[0.77em] font-normal">
                     <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-amber-500" />
                     running
                   </span>
@@ -675,7 +675,7 @@ export default function ReportComposer({ workspaceId, fontSize }: Props) {
               {toolStripOpen && (
                 <div className="flex max-h-48 flex-col gap-1 overflow-y-auto px-3 pb-1.5">
                   {toolEvents.length === 0 && status === "checking" && (
-                    <div className="text-[10px] italic text-amber-700/70">
+                    <div className="text-[0.77em] italic text-amber-700/70">
                       検索待機中...
                     </div>
                   )}
@@ -793,12 +793,12 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
     ev.state === "running" ? (
       <span className="ml-auto h-1.5 w-1.5 shrink-0 animate-pulse rounded-full bg-amber-500" />
     ) : ev.state === "error" ? (
-      <span className="ml-auto text-[10px] text-rose-600">error</span>
+      <span className="ml-auto text-[0.77em] text-rose-600">error</span>
     ) : null;
 
   if (ev.kind === "search") {
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
+      <div className="flex items-center gap-1.5 text-[0.85em] text-slate-700">
         <Search className="h-3 w-3 shrink-0 text-amber-700" />
         <span className="font-mono text-amber-700">searchGuidelines</span>
         {ev.query && (
@@ -820,7 +820,7 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
   }
   if (ev.kind === "read") {
     return (
-      <div className="flex items-center gap-1.5 text-[11px] text-slate-700">
+      <div className="flex items-center gap-1.5 text-[0.85em] text-slate-700">
         <BookOpen className="h-3 w-3 shrink-0 text-amber-700" />
         <span className="font-mono text-amber-700">readGuideline</span>
         {ev.id && <span className="font-mono text-slate-600">{ev.id}</span>}
@@ -835,7 +835,7 @@ function ToolEventRow({ ev }: { ev: GuidelineToolEvent }) {
     );
   }
   return (
-    <div className="flex items-start gap-1.5 text-[11px] text-slate-700">
+    <div className="flex items-start gap-1.5 text-[0.85em] text-slate-700">
       <Highlighter className="mt-0.5 h-3 w-3 shrink-0 text-amber-700" />
       <span className="font-mono text-amber-700">recordFinding</span>
       <div className="min-w-0 flex-1">
